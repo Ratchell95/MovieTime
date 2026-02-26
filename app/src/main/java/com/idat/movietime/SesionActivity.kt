@@ -15,7 +15,7 @@ class SesionActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_sesion) // ← tu XML de login
+        setContentView(R.layout.activity_sesion)
 
         etDocumento = findViewById(R.id.etDocumento)
         etContrasena = findViewById(R.id.etContrasena)
@@ -30,9 +30,13 @@ class SesionActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            val intent = Intent(this, PeliculasActivity::class.java)
-            startActivity(intent)
-            finish()
+            if (documento == "mhcuya1995" && contrasena == "movietime2025") {
+                val intent = Intent(this, PeliculasActivity::class.java)
+                startActivity(intent)
+                finish()
+            } else {
+                Toast.makeText(this, "Usuario o contraseña incorrectos", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 }

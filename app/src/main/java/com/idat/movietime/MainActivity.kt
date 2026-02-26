@@ -18,13 +18,13 @@ class MainActivity : AppCompatActivity() {
         btnInvitado = findViewById(R.id.btnInvitado)
 
         btnIniciarSesion.setOnClickListener {
-            // Ir a la pantalla de login (activity_sesion.xml)
+
             val intent = Intent(this, SesionActivity::class.java)
             startActivity(intent)
         }
 
         btnInvitado.setOnClickListener {
-            // Ir directo a películas sin login
+
             val intent = Intent(this, PeliculasActivity::class.java)
             startActivity(intent)
         }
