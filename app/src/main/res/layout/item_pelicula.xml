@@ -39,7 +39,7 @@
                 android:id="@+id/tvAnio"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="2024"
+                android:text="2026"
                 android:textSize="12sp"
                 android:textColor="#666666"
                 android:layout_marginTop="4dp" />

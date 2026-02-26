@@ -30,7 +30,7 @@ class SesionActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            if (documento == "mhcuya1995" && contrasena == "movietime2025") {
+            if (documento == "75724160" && contrasena == "movietime2025") {
                 val intent = Intent(this, PeliculasActivity::class.java)
                 startActivity(intent)
                 finish()
