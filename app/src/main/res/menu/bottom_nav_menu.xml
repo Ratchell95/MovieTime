@@ -1,22 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
+
     <item
         android:id="@+id/nav_inicio"
-        android:icon="@android:drawable/ic_menu_view"
+        android:icon="@drawable/ic_nav_inicio"
         android:title="Inicio" />
-    
+
     <item
         android:id="@+id/nav_peliculas"
-        android:icon="@android:drawable/ic_menu_gallery"
+        android:icon="@drawable/ic_nav_peliculas"
         android:title="Películas" />
-    
+
     <item
         android:id="@+id/nav_cines"
-        android:icon="@android:drawable/ic_menu_mylocation"
+        android:icon="@drawable/ic_nav_cines"
         android:title="Cines" />
-    
+
     <item
-        android:id="@+id/nav_cinecarderia"
-        android:icon="@android:drawable/ic_menu_my_calendar"
-        android:title="Cinecardería" />
+        android:id="@+id/nav_confiteria"
+        android:icon="@drawable/ic_nav_confiteria"
+        android:title="Chocolatería" />
+
 </menu>

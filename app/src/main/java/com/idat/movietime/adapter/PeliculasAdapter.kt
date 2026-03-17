@@ -6,40 +6,47 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.idat.movietime.R
 import com.idat.movietime.model.Pelicula
 
 class PeliculasAdapter(
-    private var peliculas: List<Pelicula>,
-    private val onItemClick: (Pelicula) -> Unit
-) : RecyclerView.Adapter<PeliculasAdapter.PeliculaViewHolder>() {
+    private var items: List<Pelicula>,
+    private val onClick: (Pelicula) -> Unit
+) : RecyclerView.Adapter<PeliculasAdapter.VH>() {
 
-    class PeliculaViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val ivPoster: ImageView = view.findViewById(R.id.ivPoster)
-        val tvTitulo: TextView = view.findViewById(R.id.tvTitulo)
-        val tvAnio: TextView = view.findViewById(R.id.tvAnio)
+    inner class VH(v: View) : RecyclerView.ViewHolder(v) {
+        val ivPoster: ImageView = v.findViewById(R.id.ivPoster)
+        val tvTitulo: TextView  = v.findViewById(R.id.tvTitulo)  // ID real del XML
+        val tvAnio:   TextView  = v.findViewById(R.id.tvAnio)    // ID real del XML
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PeliculaViewHolder {
-        val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_pelicula, parent, false)
-        return PeliculaViewHolder(view)
-    }
+    override fun onCreateViewHolder(parent: ViewGroup, vt: Int) =
+        VH(LayoutInflater.from(parent.context)
+            .inflate(R.layout.item_pelicula, parent, false))
 
-    override fun onBindViewHolder(holder: PeliculaViewHolder, position: Int) {
-        val pelicula = peliculas[position]
-        holder.tvTitulo.text = pelicula.titulo
-        holder.tvAnio.text = pelicula.anio.toString()
+    override fun onBindViewHolder(h: VH, pos: Int) {
+        val p = items[pos]
+        h.tvTitulo.text = p.titulo
+        h.tvAnio.text   = "${p.duracionMin / 60}h ${p.duracionMin % 60}m | ${p.clasificacion}"
 
-        holder.itemView.setOnClickListener {
-            onItemClick(pelicula)
+        val url = p.posterUrl.ifEmpty { p.imagenUrl }
+        if (url.isNotEmpty()) {
+            Glide.with(h.ivPoster)
+                .load(url)
+                .centerCrop()
+                .placeholder(R.mipmap.ic_launcher)
+                .into(h.ivPoster)
+        } else {
+            h.ivPoster.setImageResource(R.mipmap.ic_launcher)
         }
+        h.itemView.setOnClickListener { onClick(p) }
     }
 
-    override fun getItemCount() = peliculas.size
+    override fun getItemCount() = items.size
 
-    fun updatePeliculas(nuevasPeliculas: List<Pelicula>) {
-        peliculas = nuevasPeliculas
+    fun updatePeliculas(nuevas: List<Pelicula>) {
+        items = nuevas
         notifyDataSetChanged()
     }
 }

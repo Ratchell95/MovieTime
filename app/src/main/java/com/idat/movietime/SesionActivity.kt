@@ -4,39 +4,76 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
+import com.idat.movietime.network.RetrofitClient
+import com.idat.movietime.network.SessionManager
+import com.idat.movietime.repository.AuthResult
+import com.idat.movietime.viewmodel.AuthViewModel
 
 class SesionActivity : AppCompatActivity() {
 
-    private lateinit var etDocumento: TextInputEditText
-    private lateinit var etContrasena: TextInputEditText
-    private lateinit var btnIngresar: Button
+    private lateinit var tilDocumento:  TextInputLayout
+    private lateinit var tilContrasena: TextInputLayout
+    private lateinit var etDocumento:   TextInputEditText
+    private lateinit var etContrasena:  TextInputEditText
+    private lateinit var btnIngresar:   Button
+
+    private val viewModel: AuthViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_sesion)
 
-        etDocumento = findViewById(R.id.etDocumento)
-        etContrasena = findViewById(R.id.etContrasena)
-        btnIngresar = findViewById(R.id.btnIngresar)
+        RetrofitClient.init(SessionManager(this))
+
+        if (viewModel.isLoggedIn()) { irAPeliculas(); return }
+
+        tilDocumento  = findViewById(R.id.tilDocumento)
+        tilContrasena = findViewById(R.id.tilContrasena)
+        etDocumento   = findViewById(R.id.etDocumento)
+        etContrasena  = findViewById(R.id.etContrasena)
+        btnIngresar   = findViewById(R.id.btnIngresar)
+
+        observarViewModel()
 
         btnIngresar.setOnClickListener {
-            val documento = etDocumento.text.toString()
-            val contrasena = etContrasena.text.toString()
+            tilDocumento.error  = null
+            tilContrasena.error = null
+            viewModel.login(
+                etDocumento.text.toString().trim(),
+                etContrasena.text.toString().trim()
+            )
+        }
+    }
 
-            if (documento.isEmpty() || contrasena.isEmpty()) {
-                Toast.makeText(this, "Complete todos los campos", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
-            if (documento == "75724160" && contrasena == "movietime2025") {
-                val intent = Intent(this, PeliculasActivity::class.java)
-                startActivity(intent)
-                finish()
-            } else {
-                Toast.makeText(this, "Usuario o contraseña incorrectos", Toast.LENGTH_SHORT).show()
+    private fun observarViewModel() {
+        viewModel.cargando.observe(this) { cargando ->
+            btnIngresar.isEnabled = !cargando
+            btnIngresar.text = if (cargando) "Verificando..." else "Ingresar"
+        }
+        viewModel.errorDocumento.observe(this) { tilDocumento.error = it }
+        viewModel.errorPassword.observe(this)  { tilContrasena.error = it }
+        viewModel.loginResult.observe(this) { resultado ->
+            when (resultado) {
+                is AuthResult.Success     -> irAPeliculas()
+                is AuthResult.Error       -> {
+                    Toast.makeText(this, resultado.mensaje, Toast.LENGTH_LONG).show()
+                    etContrasena.text?.clear()
+                }
+                is AuthResult.SinConexion -> Toast.makeText(this,
+                    "Sin conexión. Verifica tu red o credenciales.",
+                    Toast.LENGTH_LONG).show()
             }
         }
+    }
+
+    private fun irAPeliculas() {
+        startActivity(Intent(this, PeliculasActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        })
+        finish()
     }
 }

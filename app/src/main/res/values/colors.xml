@@ -1,5 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
+
+    <color name="background_dark">#0A0A0A</color>
+    <color name="background_card">#1A1A1A</color>
+    <color name="background_input">#1E1E1E</color>
+
+    <color name="red_primary">#E53935</color>
+    <color name="red_dark">#B71C1C</color>
+
+    <color name="blue_primary">#003087</color>
+    <color name="blue_dark">#1565C0</color>
+
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#AAAAAA</color>
+    <color name="text_hint">#757575</color>
+
+    <color name="divider">#222222</color>
+    <color name="border">#333333</color>
+
+    <color name="nav_selected">#E53935</color>
+    <color name="nav_unselected">#AAAAAA</color>
+
+    <color name="success">#4CAF50</color>
+    <color name="warning">#FF9800</color>
+    <color name="error">#F44336</color>
+
 </resources>

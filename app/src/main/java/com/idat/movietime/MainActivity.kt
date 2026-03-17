@@ -3,30 +3,36 @@ package com.idat.movietime
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var btnIniciarSesion: Button
-    private lateinit var btnInvitado: Button
+    private lateinit var btnInvitado:      Button
+    private lateinit var tvRegistro:       TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main) // ✓ coincide con el XML
+        setContentView(R.layout.activity_main)
 
         btnIniciarSesion = findViewById(R.id.btnIniciarSesion)
-        btnInvitado = findViewById(R.id.btnInvitado)
+        btnInvitado      = findViewById(R.id.btnInvitado)
+        tvRegistro       = findViewById(R.id.tvRegistro)
+
 
         btnIniciarSesion.setOnClickListener {
-
-            val intent = Intent(this, SesionActivity::class.java)
-            startActivity(intent)
+            startActivity(Intent(this, SesionActivity::class.java))
         }
 
-        btnInvitado.setOnClickListener {
 
-            val intent = Intent(this, PeliculasActivity::class.java)
-            startActivity(intent)
+        btnInvitado.setOnClickListener {
+            startActivity(Intent(this, PeliculasActivity::class.java))
+        }
+
+
+        tvRegistro.setOnClickListener {
+            startActivity(Intent(this, RegistroActivity::class.java))
         }
     }
 }

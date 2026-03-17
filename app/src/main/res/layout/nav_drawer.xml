@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#111111">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="180dp"
+        android:background="#0A0A0A"
+        android:orientation="vertical"
+        android:gravity="bottom"
+        android:padding="20dp">
+        <ImageView
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:src="@mipmap/ic_launcher"
+            android:contentDescription="Logo" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="MOVIE TIME"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:letterSpacing="0.08" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Multicines"
+            android:textColor="#E53935"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#222222" />
+
+    <LinearLayout android:id="@+id/navCartelera" android:layout_width="match_parent" android:layout_height="54dp" android:gravity="center_vertical" android:paddingStart="20dp" android:clickable="true" android:focusable="true" android:background="?android:attr/selectableItemBackground">
+        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_drawer_cartelera" android:contentDescription="Cartelera" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cartelera" android:textSize="15sp" android:padding="12dp" android:textColor="#FFFFFF" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/navEntradas" android:layout_width="match_parent" android:layout_height="54dp" android:gravity="center_vertical" android:paddingStart="20dp" android:clickable="true" android:focusable="true" android:background="?android:attr/selectableItemBackground">
+        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_drawer_entradas" android:contentDescription="Mis Entradas" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Mis Entradas" android:textSize="15sp" android:padding="12dp" android:textColor="#FFFFFF" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/navConfiteria" android:layout_width="match_parent" android:layout_height="54dp" android:gravity="center_vertical" android:paddingStart="20dp" android:clickable="true" android:focusable="true" android:background="?android:attr/selectableItemBackground">
+        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_nav_confiteria" android:contentDescription="Confitería" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Confitería" android:textSize="15sp" android:padding="12dp" android:textColor="#FFFFFF" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/navHistorial" android:layout_width="match_parent" android:layout_height="54dp" android:gravity="center_vertical" android:paddingStart="20dp" android:clickable="true" android:focusable="true" android:background="?android:attr/selectableItemBackground">
+        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_drawer_historial" android:contentDescription="Historial" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Historial" android:textSize="15sp" android:padding="12dp" android:textColor="#FFFFFF" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/navQR" android:layout_width="match_parent" android:layout_height="54dp" android:gravity="center_vertical" android:paddingStart="20dp" android:clickable="true" android:focusable="true" android:background="?android:attr/selectableItemBackground">
+        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_drawer_qr" android:contentDescription="Escanear QR" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Escanear QR" android:textSize="15sp" android:padding="12dp" android:textColor="#FFFFFF" />
+    </LinearLayout>
+
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#222222" android:layout_marginTop="8dp" android:layout_marginBottom="8dp" />
+
+    <LinearLayout android:id="@+id/navCerrarSesion" android:layout_width="match_parent" android:layout_height="54dp" android:gravity="center_vertical" android:paddingStart="20dp" android:clickable="true" android:focusable="true" android:background="?android:attr/selectableItemBackground">
+        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_drawer_logout" android:contentDescription="Cerrar Sesión" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cerrar Sesión" android:textSize="15sp" android:padding="12dp" android:textColor="#888888" />
+    </LinearLayout>
+
+</LinearLayout>
