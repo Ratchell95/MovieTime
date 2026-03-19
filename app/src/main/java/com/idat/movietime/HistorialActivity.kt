@@ -1,104 +1,122 @@
 package com.idat.movietime
 
+import android.content.Intent
+import android.database.sqlite.SQLiteDatabase
 import android.os.Bundle
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import org.json.JSONArray
-
-data class CompraHistorial(
-    val titulo:      String,
-    val total:       Double,
-    val metodoPago:  String,
-    val comprobante: String,
-    val codigoQR:    String,
-    val butacas:     String,
-    val sede:        String,
-    val fecha:       String,
-    val hora:        String,
-    val fechaCompra: String
-)
+import com.idat.movietime.adapters.HistorialAdapter
+import com.idat.movietime.db.DatabaseHelper
+import com.idat.movietime.model.VentaDetalle
+import com.idat.movietime.model.VentaDetalle.EntradaItem
+import com.idat.movietime.network.SessionManager
 
 class HistorialActivity : AppCompatActivity() {
+
+    private lateinit var recyclerHistorial: RecyclerView
+    private lateinit var tvHistorialVacio: TextView
+    private var dbHelper: DatabaseHelper? = null
+    private var idClienteActual = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_historial)
 
-        findViewById<TextView>(R.id.btnAtrasHistorial)?.setOnClickListener { finish() }
+        recyclerHistorial = findViewById(R.id.recyclerHistorial)
+        tvHistorialVacio  = findViewById(R.id.tvHistorialVacio)
+        recyclerHistorial.layoutManager = LinearLayoutManager(this)
 
-        val recycler = findViewById<RecyclerView>(R.id.recyclerHistorial)
-        val tvVacio  = findViewById<TextView>(R.id.tvHistorialVacio)
-        val compras  = cargarCompras()
+        findViewById<View>(R.id.btnAtras)?.setOnClickListener { finish() }
 
-        if (compras.isEmpty()) {
-            tvVacio.visibility  = View.VISIBLE
-            recycler.visibility = View.GONE
+        idClienteActual = SessionManager(this).getIdUsuario()
+
+        cargarHistorial()
+    }
+
+    private fun cargarHistorial() {
+        dbHelper = DatabaseHelper(this)
+        val lista: List<VentaDetalle> = obtenerVentasCliente(idClienteActual)
+
+        if (lista.isEmpty()) {
+            tvHistorialVacio.visibility  = View.VISIBLE
+            recyclerHistorial.visibility = View.GONE
         } else {
-            tvVacio.visibility  = View.GONE
-            recycler.visibility = View.VISIBLE
-            recycler.layoutManager = LinearLayoutManager(this)
-            recycler.adapter = HistorialAdapter(compras)
+            tvHistorialVacio.visibility  = View.GONE
+            recyclerHistorial.visibility = View.VISIBLE
+            recyclerHistorial.adapter = HistorialAdapter(lista) { venta ->
+                val intent = Intent(this, DetalleCompraActivity::class.java)
+                intent.putExtra("id_venta", venta.idVenta)
+                startActivity(intent)
+            }
         }
     }
 
-    private fun cargarCompras(): List<CompraHistorial> {
-        val prefs   = getSharedPreferences("movietime_historial", MODE_PRIVATE)
-        val jsonStr = prefs.getString("compras", "[]") ?: "[]"
-        val array   = try { JSONArray(jsonStr) } catch (e: Exception) { JSONArray() }
-        val lista   = mutableListOf<CompraHistorial>()
+    private fun obtenerVentasCliente(idCliente: Int): List<VentaDetalle> {
+        val resultado = mutableListOf<VentaDetalle>()
+        val db: SQLiteDatabase = dbHelper!!.readableDatabase
 
-        for (i in array.length() - 1 downTo 0) {
-            val obj = array.getJSONObject(i)
-            lista.add(CompraHistorial(
-                titulo      = obj.optString("titulo"),
-                total       = obj.optDouble("total", 0.0),
-                metodoPago  = obj.optString("metodoPago"),
-                comprobante = obj.optString("comprobante"),
-                codigoQR    = obj.optString("codigoQR"),
-                butacas     = obj.optString("butacas"),
-                sede        = obj.optString("sede"),
-                fecha       = obj.optString("fecha"),
-                hora        = obj.optString("hora"),
-                fechaCompra = obj.optString("fechaCompra")
-            ))
+        val sql =
+            "SELECT v.id_venta, v.fecha_venta, v.total, v.subtotal, v.descuento, " +
+                    "       v.tipo_comprobante, v.metodo_pago, v.estado, " +
+                    "       de.id_detalle_entrada, de.codigo_qr, de.estado_ingreso, de.precio_unitario, " +
+                    "       f.fecha_hora, p.titulo, s.nombre AS nombre_sala, b.fila, b.numero " +
+                    "FROM ventas v " +
+                    "LEFT JOIN detalle_entradas de ON de.id_venta   = v.id_venta " +
+                    "LEFT JOIN funciones        f  ON f.id_funcion  = de.id_funcion " +
+                    "LEFT JOIN peliculas        p  ON p.id_pelicula = f.id_pelicula " +
+                    "LEFT JOIN butacas          b  ON b.id_butaca   = de.id_butaca " +
+                    "LEFT JOIN salas            s  ON s.id_sala     = b.id_sala " +
+                    "WHERE v.id_cliente = ? " +
+                    "ORDER BY v.fecha_venta DESC"
+
+        val cursor = db.rawQuery(sql, arrayOf(idCliente.toString()))
+
+        var ultimoIdVenta = -1
+        var ventaActual: VentaDetalle? = null
+
+        while (cursor.moveToNext()) {
+            val idVenta = cursor.getInt(cursor.getColumnIndexOrThrow("id_venta"))
+
+            if (idVenta != ultimoIdVenta) {
+                ventaActual = VentaDetalle().apply {
+                    this.idVenta         = idVenta
+                    this.fechaVenta      = cursor.getString(cursor.getColumnIndexOrThrow("fecha_venta"))
+                    this.total           = cursor.getDouble(cursor.getColumnIndexOrThrow("total"))
+                    this.subtotal        = cursor.getDouble(cursor.getColumnIndexOrThrow("subtotal"))
+                    this.descuento       = cursor.getDouble(cursor.getColumnIndexOrThrow("descuento"))
+                    this.tipoComprobante = cursor.getString(cursor.getColumnIndexOrThrow("tipo_comprobante"))
+                    this.metodoPago      = cursor.getString(cursor.getColumnIndexOrThrow("metodo_pago"))
+                    this.estadoVenta     = cursor.getString(cursor.getColumnIndexOrThrow("estado"))
+                    this.entradas        = ArrayList()
+                }
+                resultado.add(ventaActual)
+                ultimoIdVenta = idVenta
+            }
+
+            if (!cursor.isNull(cursor.getColumnIndexOrThrow("id_detalle_entrada"))) {
+                val entrada = EntradaItem().apply {
+                    tituloPelicula   = cursor.getString(cursor.getColumnIndexOrThrow("titulo"))
+                    fechaHoraFuncion = cursor.getString(cursor.getColumnIndexOrThrow("fecha_hora"))
+                    nombreSala       = cursor.getString(cursor.getColumnIndexOrThrow("nombre_sala"))
+                    fila             = cursor.getString(cursor.getColumnIndexOrThrow("fila"))
+                    numero           = cursor.getInt(cursor.getColumnIndexOrThrow("numero"))
+                    precioUnitario   = cursor.getDouble(cursor.getColumnIndexOrThrow("precio_unitario"))
+                    codigoQR         = cursor.getString(cursor.getColumnIndexOrThrow("codigo_qr"))
+                }
+                ventaActual?.entradas?.add(entrada)
+            }
         }
-        return lista
+
+        cursor.close()
+        db.close()
+        return resultado
     }
 
-    inner class HistorialAdapter(private val items: List<CompraHistorial>) :
-        RecyclerView.Adapter<HistorialAdapter.VH>() {
-
-        inner class VH(v: View) : RecyclerView.ViewHolder(v) {
-            val tvTitulo:      TextView = v.findViewById(R.id.tvHistTitulo)
-            val tvSede:        TextView = v.findViewById(R.id.tvHistSede)
-            val tvFechaHora:   TextView = v.findViewById(R.id.tvHistFechaHora)
-            val tvButacas:     TextView = v.findViewById(R.id.tvHistButacas)
-            val tvTotal:       TextView = v.findViewById(R.id.tvHistTotal)
-            val tvMetodo:      TextView = v.findViewById(R.id.tvHistMetodo)
-            val tvCodigo:      TextView = v.findViewById(R.id.tvHistCodigo)
-            val tvFechaCompra: TextView = v.findViewById(R.id.tvHistFechaCompra)
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, vt: Int) =
-            VH(LayoutInflater.from(parent.context).inflate(R.layout.item_historial, parent, false))
-
-        override fun onBindViewHolder(h: VH, pos: Int) {
-            val c = items[pos]
-            h.tvTitulo.text      = c.titulo
-            h.tvSede.text        = c.sede
-            h.tvFechaHora.text   = "${c.fecha}  ${c.hora}"
-            h.tvButacas.text     = "Butacas: ${c.butacas}"
-            h.tvTotal.text       = "S/ ${"%.2f".format(c.total)}"
-            h.tvMetodo.text      = "${c.metodoPago} · ${c.comprobante}"
-            h.tvCodigo.text      = "Cód: ${c.codigoQR}"
-            h.tvFechaCompra.text = "Comprado el ${c.fechaCompra}"
-        }
-
-        override fun getItemCount() = items.size
+    override fun onDestroy() {
+        super.onDestroy()
+        dbHelper?.close()
     }
 }

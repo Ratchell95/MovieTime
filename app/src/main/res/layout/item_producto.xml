@@ -15,29 +15,27 @@
         android:orientation="vertical"
         android:padding="8dp">
 
-        <!-- Emoji / imagen del producto -->
-        <TextView
-            android:id="@+id/tvEmojiProducto"
+        <!-- ✅ Sin android:src fijo — se asigna desde el código -->
+        <ImageView
+            android:id="@+id/ivProducto"
             android:layout_width="match_parent"
-            android:layout_height="70dp"
-            android:gravity="center"
-            android:text="🍿"
-            android:textSize="36sp" />
+            android:layout_height="90dp"
+            android:scaleType="centerInside"
+            android:adjustViewBounds="true"
+            android:contentDescription="Producto" />
 
-        <!-- Nombre -->
         <TextView
             android:id="@+id/tvNombreProducto"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="POP CORN\nSALADO CHICO"
+            android:text="PRODUCTO"
             android:textColor="#111111"
             android:textSize="10sp"
             android:textStyle="bold"
             android:gravity="center"
             android:lines="2" />
 
-        <!-- Precio y contador -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -50,7 +48,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="S/12.00"
+                android:text="S/0.00"
                 android:textColor="#111111"
                 android:textSize="11sp"
                 android:textStyle="bold" />

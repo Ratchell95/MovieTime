@@ -14,7 +14,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- IMAGEN DE LA SEDE -->
+
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="150dp">
@@ -27,7 +27,7 @@
                 android:src="@mipmap/ic_launcher"
                 android:contentDescription="Imagen del cine" />
 
-            <!-- Overlay oscuro sobre la imagen -->
+
             <View
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
@@ -35,14 +35,13 @@
 
         </FrameLayout>
 
-        <!-- CONTENIDO INFERIOR -->
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:padding="14dp">
 
-            <!-- Nombre de la sede -->
             <TextView
                 android:id="@+id/tvNombreCine"
                 android:layout_width="match_parent"
@@ -52,7 +51,7 @@
                 android:textSize="14sp"
                 android:textStyle="bold" />
 
-            <!-- Dirección -->
+
             <TextView
                 android:id="@+id/tvDireccionCine"
                 android:layout_width="match_parent"
@@ -63,7 +62,7 @@
                 android:textSize="12sp"
                 android:lineSpacingExtra="2dp" />
 
-            <!-- Formato (chip) -->
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -86,7 +85,6 @@
 
             </LinearLayout>
 
-            <!-- Botón Ver en mapa -->
             <Button
                 android:id="@+id/btnVerMapa"
                 android:layout_width="match_parent"

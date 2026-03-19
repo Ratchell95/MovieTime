@@ -3,14 +3,17 @@ package com.idat.movietime
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -26,70 +29,61 @@ data class Sede(
 
 class CinesActivity : AppCompatActivity() {
 
+    private lateinit var drawerLayout: DrawerLayout
+
     private val sedes = listOf(
-        Sede(
-            nombre    = "MOVIE TIME PREMIUM BASADRE",
-            direccion = "CAL. LAS PALMERAS URB. ORRANTIA 0343",
-            formato   = "2D",
-            latitud   = -12.0922,
-            longitud  = -77.0324
-        ),
-        Sede(
-            nombre    = "MOVIETIME IQUITOS",
-            direccion = "Ramón Castilla 610, Iquitos 16001",
-            formato   = "2D",
-            latitud   = -3.7491,
-            longitud  = -73.2516
-        ),
-        Sede(
-            nombre    = "MOVIETIME PREMIUM IQUITOS",
-            direccion = "Mall Aventura, Iquitos 16007",
-            formato   = "2D | 3D",
-            latitud   = -3.7689,
-            longitud  = -73.2374
-        ),
-        Sede(
-            nombre    = "JAEN",
-            direccion = "Av. Manuel Antonio Mesones Muro 3002, Jaén 06801",
-            formato   = "2D",
-            latitud   = -5.7072,
-            longitud  = -78.8052
-        ),
-        Sede(
-            nombre    = "CHORRILLOS",
-            direccion = "Av. Defensores del Morro 1277, Chorrillos",
-            formato   = "2D | XD",
-            latitud   = -12.1667,
-            longitud  = -77.0167
-        ),
-        Sede(
-            nombre    = "VES1",
-            direccion = "Villa El Salvador, Lima",
-            formato   = "2D",
-            latitud   = -12.2142,
-            longitud  = -76.9364
-        )
+        Sede("MOVIE TIME\nPREMIUM BASADRE", "CAL. LAS PALMERAS URB. ORRANTIA 0343", "2D",      -12.0922, -77.0324, R.drawable.ic_sede1),
+        Sede("MOVIETIME\nIQUITOS",          "Ramón Castilla 610, Iquitos 16001",     "2D",      -3.7491,  -73.2516, R.drawable.ic_sede2),
+        Sede("MOVIETIME\nPREMIUM IQUITOS",  "Mall Aventura, Iquitos 16007",          "2D | 3D", -3.7689,  -73.2374, R.drawable.ic_sede3),
+        Sede("JAEN",       "Av. Mesones Muro 3002, Jaén",          "2D",      -5.7072,  -78.8052, R.drawable.ic_sede4),
+        Sede("CHORRILLOS", "Av. Defensores del Morro 1277",        "2D | XD", -12.1667, -77.0167, R.drawable.ic_sede5),
+        Sede("VES1",       "Villa El Salvador, Lima",              "2D",      -12.2142, -76.9364, R.drawable.ic_sede6)
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_cines)
 
+        drawerLayout = findViewById(R.id.drawerLayout)
+
         val recycler = findViewById<RecyclerView>(R.id.recyclerCines)
         recycler.layoutManager = GridLayoutManager(this, 2)
         recycler.adapter = CinesAdapter(sedes)
 
-        // Bottom navigation
+        setupBottomNav()
+        setupDrawer()
+    }
+
+    private fun setupBottomNav() {
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNavigation)
         bottomNav.selectedItemId = R.id.nav_cines
         bottomNav.setOnItemSelectedListener { item: MenuItem ->
             when (item.itemId) {
-                R.id.nav_inicio     -> { startActivity(Intent(this, PeliculasActivity::class.java)); true }
+                R.id.nav_inicio     -> { startActivity(Intent(this, InicioActivity::class.java)); true }
                 R.id.nav_peliculas  -> { startActivity(Intent(this, PeliculasActivity::class.java)); true }
                 R.id.nav_cines      -> true
                 R.id.nav_confiteria -> { startActivity(Intent(this, ConfiteriaActivity::class.java)); true }
                 else -> false
             }
+        }
+    }
+
+
+    private fun setupDrawer() {
+        findViewById<ImageButton>(R.id.btnMenu)?.setOnClickListener {
+            if (drawerLayout.isDrawerOpen(Gravity.START)) drawerLayout.closeDrawer(Gravity.START)
+            else drawerLayout.openDrawer(Gravity.START)
+        }
+        findViewById<View>(R.id.navCartelera)?.setOnClickListener   { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, PeliculasActivity::class.java)) }
+        findViewById<View>(R.id.navEntradas)?.setOnClickListener    { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, HistorialActivity::class.java)) }
+        findViewById<View>(R.id.navConfiteria)?.setOnClickListener  { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, ConfiteriaActivity::class.java)) }
+        findViewById<View>(R.id.navHistorial)?.setOnClickListener   { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, HistorialActivity::class.java)) }
+        findViewById<View>(R.id.navQR)?.setOnClickListener         { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, QRScannerActivity::class.java)) }
+        findViewById<View>(R.id.navCerrarSesion)?.setOnClickListener {
+            drawerLayout.closeDrawer(Gravity.START)
+            startActivity(Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            })
         }
     }
 
@@ -112,22 +106,19 @@ class CinesActivity : AppCompatActivity() {
             h.tvNombre.text  = sede.nombre
             h.tvDir.text     = sede.direccion
             h.tvFormato.text = sede.formato
-
+            if (sede.imagenRes != 0) {
+                h.ivImagen.setImageResource(sede.imagenRes)
+                h.ivImagen.scaleType = ImageView.ScaleType.CENTER_CROP
+            } else {
+                h.ivImagen.setImageResource(R.mipmap.ic_icono)
+            }
             h.btnMapa.setOnClickListener {
-                val uri = Uri.parse("geo:${sede.latitud},${sede.longitud}?q=${Uri.encode(sede.nombre)}")
-                val intent = Intent(Intent.ACTION_VIEW, uri).apply {
-                    setPackage("com.google.android.apps.maps")
-                }
-                if (intent.resolveActivity(packageManager) != null) {
-                    startActivity(intent)
-                } else {
-                    // Fallback: abrir en navegador
-                    val webUri = Uri.parse("https://maps.google.com/?q=${sede.latitud},${sede.longitud}")
-                    startActivity(Intent(Intent.ACTION_VIEW, webUri))
-                }
+                val uri = Uri.parse("geo:${sede.latitud},${sede.longitud}?q=${Uri.encode(sede.nombre.replace("\n"," "))}")
+                val gmaps = Intent(Intent.ACTION_VIEW, uri).apply { setPackage("com.google.android.apps.maps") }
+                if (gmaps.resolveActivity(packageManager) != null) startActivity(gmaps)
+                else startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://maps.google.com/?q=${sede.latitud},${sede.longitud}")))
             }
         }
-
         override fun getItemCount() = items.size
     }
 }

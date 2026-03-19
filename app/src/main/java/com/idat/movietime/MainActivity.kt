@@ -15,21 +15,17 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
         btnIniciarSesion = findViewById(R.id.btnIniciarSesion)
         btnInvitado      = findViewById(R.id.btnInvitado)
         tvRegistro       = findViewById(R.id.tvRegistro)
-
 
         btnIniciarSesion.setOnClickListener {
             startActivity(Intent(this, SesionActivity::class.java))
         }
 
-
         btnInvitado.setOnClickListener {
             startActivity(Intent(this, PeliculasActivity::class.java))
         }
-
 
         tvRegistro.setOnClickListener {
             startActivity(Intent(this, RegistroActivity::class.java))

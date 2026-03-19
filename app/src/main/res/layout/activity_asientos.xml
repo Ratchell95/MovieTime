@@ -11,7 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <!-- HEADER AZUL -->
+
         <LinearLayout
             android:id="@+id/header"
             android:layout_width="0dp"
@@ -47,7 +47,7 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- INFO PELÍCULA -->
+
         <LinearLayout
             android:id="@+id/layoutInfoPelicula"
             android:layout_width="0dp"
@@ -117,7 +117,6 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- PASOS -->
         <LinearLayout
             android:id="@+id/layoutPasos"
             android:layout_width="0dp"
@@ -131,7 +130,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent">
 
-            <!-- Paso 1: Asientos (activo) -->
+
             <LinearLayout android:layout_width="36dp" android:layout_height="36dp" android:background="#003087" android:gravity="center">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🪑" android:textSize="16sp" />
             </LinearLayout>
@@ -141,18 +140,18 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🎟" android:textSize="16sp" />
             </LinearLayout>
             <View android:layout_width="50dp" android:layout_height="2dp" android:background="#CCCCCC" android:layout_marginStart="4dp" android:layout_marginEnd="4dp" />
-            <!-- Paso 3 -->
+
             <LinearLayout android:layout_width="36dp" android:layout_height="36dp" android:background="#DDDDDD" android:gravity="center">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🍿" android:textSize="16sp" />
             </LinearLayout>
             <View android:layout_width="50dp" android:layout_height="2dp" android:background="#CCCCCC" android:layout_marginStart="4dp" android:layout_marginEnd="4dp" />
-            <!-- Paso 4 -->
+
             <LinearLayout android:layout_width="36dp" android:layout_height="36dp" android:background="#DDDDDD" android:gravity="center">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="💳" android:textSize="16sp" />
             </LinearLayout>
         </LinearLayout>
 
-        <!-- PANTALLA -->
+
         <LinearLayout
             android:id="@+id/layoutPantalla"
             android:layout_width="0dp"
@@ -184,7 +183,7 @@
                 android:letterSpacing="0.1" />
         </LinearLayout>
 
-        <!-- GRID ASIENTOS -->
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerAsientos"
             android:layout_width="0dp"
@@ -196,7 +195,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- LEYENDA -->
+
         <LinearLayout
             android:id="@+id/layoutLeyenda"
             android:layout_width="0dp"
@@ -218,7 +217,7 @@
             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Libre" android:textColor="#444444" android:textSize="11sp" />
         </LinearLayout>
 
-        <!-- PANEL INFERIOR -->
+
         <LinearLayout
             android:id="@+id/layoutInferior"
             android:layout_width="0dp"

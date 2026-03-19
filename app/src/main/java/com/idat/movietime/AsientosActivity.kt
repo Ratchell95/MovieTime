@@ -1,6 +1,7 @@
 package com.idat.movietime
 
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -10,11 +11,13 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.idat.movietime.db.DatabaseHelper
 
 enum class AsientoTipo { LIBRE, OCUPADA, ESPACIO, ETIQUETA_FILA, NUMERO_COL }
 
@@ -29,7 +32,6 @@ private const val VT_ASIENTO  = 0
 private const val VT_ESPACIO  = 1
 private const val VT_ETIQUETA = 2
 private const val VT_NUM_COL  = 3
-
 
 class AsientosActivity : AppCompatActivity() {
 
@@ -48,16 +50,30 @@ class AsientosActivity : AppCompatActivity() {
     private val butacasSeleccionadas = mutableListOf<String>()
     private var timer: CountDownTimer? = null
 
-    private var tituloExtra   = ""
-    private var duracionExtra = 0
-    private var clasificExtra = ""
-    private var sedeExtra     = ""
-    private var horaExtra     = ""
-    private var salaExtra     = ""
-    private var fechaExtra    = ""
+    private var idPeliculaExtra = 0
+    private var tituloExtra     = ""
+    private var duracionExtra   = 0
+    private var clasificExtra   = ""
+    private var sedeExtra       = ""
+    private var horaExtra       = ""
+    private var salaExtra       = ""
+    private var fechaExtra      = ""
+    private var drawableResExtra = 0
+    private var idFuncionExtra   = 0   // para bloqueo SQLite de butacas
+
+    // ✅ Mismo mapa que DetallePeliculaActivity y PeliculasAdapter
+    private val drawableMap = mapOf(
+        1 to R.drawable.ic_pelicula1,
+        2 to R.drawable.ic_pelicula2,
+        3 to R.drawable.ic_pelicula3,
+        4 to R.drawable.ic_pelicula4,
+        5 to R.drawable.ic_pelicula5,
+        6 to R.drawable.ic_pelicula6,
+        7 to R.drawable.ic_pelicula7,
+        8 to R.drawable.ic_pelicula8
+    )
 
     private val filas = listOf("M","L","K","J","I","H","G","F","E","D","C","B","A")
-
     private val colsPorFila = mapOf(
         "M" to (1..17).toList(), "L" to (1..17).toList(),
         "K" to (1..17).toList(), "J" to (1..17).toList(),
@@ -67,8 +83,7 @@ class AsientosActivity : AppCompatActivity() {
         "C" to (1..9).toList(),  "B" to (1..7).toList(),
         "A" to (1..5).toList()
     )
-
-    private val ocupadas = setOf("K8","K9","E4","E5","M13","M14")
+    private val ocupadas  = setOf("K8","K9","E4","E5","M13","M14")
     private val GRID_COLS = 18
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -86,76 +101,89 @@ class AsientosActivity : AppCompatActivity() {
         recyclerAsientos  = findViewById(R.id.recyclerAsientos)
         btnContinuar      = findViewById(R.id.btnContinuar)
 
-        tituloExtra   = intent.getStringExtra("titulo")        ?: ""
-        duracionExtra = intent.getIntExtra("duracion_min", 0)
-        clasificExtra = intent.getStringExtra("clasificacion") ?: ""
-        sedeExtra     = intent.getStringExtra("sede")          ?: "MOVIETIME IQUITOS"
-        horaExtra     = intent.getStringExtra("hora")          ?: "10:00 PM"
-        salaExtra     = intent.getStringExtra("sala")          ?: "SALA: 05"
-        fechaExtra    = intent.getStringExtra("fecha")         ?: "Hoy"
+        idPeliculaExtra  = intent.getIntExtra("id_pelicula",   0)
+        tituloExtra      = intent.getStringExtra("titulo")        ?: ""
+        duracionExtra    = intent.getIntExtra("duracion_min",    0)
+        clasificExtra    = intent.getStringExtra("clasificacion") ?: ""
+        sedeExtra        = intent.getStringExtra("sede")          ?: "MOVIETIME IQUITOS"
+        horaExtra        = intent.getStringExtra("hora")          ?: "10:00 PM"
+        salaExtra        = intent.getStringExtra("sala")          ?: "SALA: 05"
+        fechaExtra       = intent.getStringExtra("fecha")         ?: "Hoy"
+        drawableResExtra = intent.getIntExtra("drawable_res",    0)
+        idFuncionExtra   = intent.getIntExtra("id_funcion",      0)
+
+        // ── Butacas bloqueadas en BD (misma función/día) ─────────────
+        val bloqueadasBD: Set<String> = emptySet()
 
         tvTituloAsiento.text   = "$tituloExtra (DOB)"
-        tvDuracionAsiento.text = "${duracionExtra / 60} hr ${duracionExtra % 60} min | $clasificExtra"
+        tvDuracionAsiento.text = "${duracionExtra/60} hr ${duracionExtra%60} min | $clasificExtra"
         tvSedeAsiento.text     = sedeExtra
         tvFechaAsiento.text    = fechaExtra
         tvHoraAsiento.text     = horaExtra
         tvSalaAsiento.text     = salaExtra
 
+        // ✅ Cargar imagen del póster de la película
+        val ivPoster = findViewById<ImageView>(R.id.ivPosterAsiento)
+        val resImg = when {
+            drawableResExtra != 0              -> drawableResExtra
+            drawableMap[idPeliculaExtra] != null -> drawableMap[idPeliculaExtra]!!
+            else                               -> 0
+        }
+        if (resImg != 0) {
+            ivPoster?.setImageResource(resImg)
+            ivPoster?.scaleType = ImageView.ScaleType.CENTER_CROP
+        }
+
         findViewById<TextView>(R.id.btnAtras)?.setOnClickListener { finish() }
 
         iniciarCronometro()
-        setupAsientos()
+        setupAsientos(bloqueadasBD)
 
         btnContinuar.setOnClickListener {
             timer?.cancel()
-            // Va a EntradaActivity para seleccionar tipo (Adulto/Niño/Adulto Mayor)
-            Intent(this, EntradaActivity::class.java).also { i ->
-                i.putExtra("butacas",           butacasSeleccionadas.joinToString(", "))
-                i.putExtra("cantidad_entradas", butacasSeleccionadas.size)
-                i.putExtra("titulo",            tituloExtra)
-                i.putExtra("duracion_min",      duracionExtra)
-                i.putExtra("clasificacion",     clasificExtra)
-                i.putExtra("sede",              sedeExtra)
-                i.putExtra("hora",              horaExtra)
-                i.putExtra("sala",              salaExtra)
-                i.putExtra("fecha",             fechaExtra)
-                startActivity(i)
-            }
+            startActivity(Intent(this, EntradaActivity::class.java).apply {
+                putExtra("butacas",           butacasSeleccionadas.joinToString(", "))
+                putExtra("cantidad_entradas", butacasSeleccionadas.size)
+                putExtra("titulo",            tituloExtra)
+                putExtra("duracion_min",      duracionExtra)
+                putExtra("clasificacion",     clasificExtra)
+                putExtra("sede",              sedeExtra)
+                putExtra("hora",              horaExtra)
+                putExtra("sala",              salaExtra)
+                putExtra("fecha",             fechaExtra)
+                putExtra("drawable_res",      drawableResExtra)
+                putExtra("id_pelicula",       idPeliculaExtra)
+                putExtra("id_funcion",        idFuncionExtra)
+            })
         }
     }
 
-    private fun setupAsientos() {
+    private fun setupAsientos(bloqueadasBD: Set<String> = emptySet()) {
+        val todasOcupadas = ocupadas + bloqueadasBD  // hardcode + BD
         val maxAsientos = 17
         val celdas = mutableListOf<AsientoCelda>()
-
-        // Cabecera: esquina vacía + números 1..17
         celdas.add(AsientoCelda("", 0, AsientoTipo.ESPACIO))
-        for (n in 1..maxAsientos) {
+        for (n in 1..maxAsientos)
             celdas.add(AsientoCelda("", n, AsientoTipo.NUMERO_COL, label = n.toString()))
-        }
-
         for (fila in filas) {
             val cols        = colsPorFila[fila] ?: emptyList()
             val espaciosIzq = (maxAsientos - cols.size) / 2
             val espaciosDer = maxAsientos - cols.size - espaciosIzq
-
             celdas.add(AsientoCelda(fila, 0, AsientoTipo.ETIQUETA_FILA, label = fila))
             repeat(espaciosIzq) { celdas.add(AsientoCelda(fila, 0, AsientoTipo.ESPACIO)) }
             for (col in cols) {
                 val codigo = "$fila$col"
-                val tipo   = if (ocupadas.contains(codigo)) AsientoTipo.OCUPADA else AsientoTipo.LIBRE
-                celdas.add(AsientoCelda(fila, col, tipo))
+                celdas.add(AsientoCelda(fila, col,
+                    if (todasOcupadas.contains(codigo)) AsientoTipo.OCUPADA else AsientoTipo.LIBRE))
             }
             repeat(espaciosDer) { celdas.add(AsientoCelda(fila, 0, AsientoTipo.ESPACIO)) }
         }
-
         seatAdapter = AsientoAdapter(celdas) { fila, col, seleccionada ->
             val codigo = "$fila$col"
             if (seleccionada) butacasSeleccionadas.add(codigo)
             else              butacasSeleccionadas.remove(codigo)
             actualizarPie()
         }
-
         recyclerAsientos.layoutManager = GridLayoutManager(this, GRID_COLS)
         recyclerAsientos.adapter = seatAdapter
     }
@@ -164,20 +192,24 @@ class AsientosActivity : AppCompatActivity() {
         tvSeleccionadas.text = if (butacasSeleccionadas.isEmpty()) "Butacas: "
         else "Butacas: ${butacasSeleccionadas.joinToString(", ")}"
         btnContinuar.isEnabled = butacasSeleccionadas.isNotEmpty()
-        btnContinuar.backgroundTintList = android.content.res.ColorStateList.valueOf(
+        btnContinuar.backgroundTintList = ColorStateList.valueOf(
             if (butacasSeleccionadas.isNotEmpty()) Color.parseColor("#1A1A2E")
             else Color.parseColor("#AAAAAA")
         )
     }
 
     private fun iniciarCronometro() {
+        tvCronometro.visibility = android.view.View.VISIBLE
         timer = object : CountDownTimer(10 * 60 * 1000L, 1000) {
             override fun onTick(ms: Long) {
                 val m = ms / 60000; val s = (ms % 60000) / 1000
                 tvCronometro.text = "⏱ %02d:%02d".format(m, s)
             }
             override fun onFinish() {
-                Toast.makeText(this@AsientosActivity, "Tiempo agotado", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@AsientosActivity, "⏱ Tiempo agotado — los asientos se liberaron", Toast.LENGTH_LONG).show()
+                startActivity(Intent(this@AsientosActivity, PeliculasActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                })
                 finish()
             }
         }.start()
@@ -198,7 +230,6 @@ class AsientosActivity : AppCompatActivity() {
     ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
         private val seleccionadas = mutableSetOf<String>()
-
         private var tooltipPos = -1
 
         inner class AsientoVH(v: View) : RecyclerView.ViewHolder(v) {
@@ -217,29 +248,21 @@ class AsientosActivity : AppCompatActivity() {
 
         override fun onCreateViewHolder(parent: ViewGroup, vt: Int): RecyclerView.ViewHolder {
             return when (vt) {
-                VT_ASIENTO -> {
-                    val v = LayoutInflater.from(parent.context)
-                        .inflate(R.layout.item_asiento, parent, false)
-                    AsientoVH(v)
-                }
+                VT_ASIENTO -> AsientoVH(LayoutInflater.from(parent.context)
+                    .inflate(R.layout.item_asiento, parent, false))
                 VT_ETIQUETA, VT_NUM_COL -> {
                     val tv = TextView(parent.context).apply {
-                        // Mismas dimensiones que item_asiento (22dp + 1dp margin * 2 = 24dp)
                         val size = (24 * resources.displayMetrics.density).toInt()
                         layoutParams = RecyclerView.LayoutParams(size, size)
-                        gravity  = Gravity.CENTER
-                        textSize = 7f
+                        gravity = Gravity.CENTER; textSize = 7f
                         setTextColor(Color.parseColor("#777777"))
                     }
                     EtiquetaVH(tv)
                 }
-                else -> {
+                else -> EspacioVH(View(parent.context).apply {
                     val size = (24 * resources.displayMetrics.density).toInt()
-                    val v = View(parent.context).apply {
-                        layoutParams = RecyclerView.LayoutParams(size, size)
-                    }
-                    EspacioVH(v)
-                }
+                    layoutParams = RecyclerView.LayoutParams(size, size)
+                })
             }
         }
 
@@ -255,11 +278,8 @@ class AsientosActivity : AppCompatActivity() {
             val codigo = "${c.fila}${c.col}"
             holder.itemView.setOnClickListener(null)
             holder.itemView.isClickable = true
-
-            // Tooltip
             holder.tvAsiento.text = if (tooltipPos == pos) codigo else ""
             holder.tvAsiento.setTextColor(Color.WHITE)
-
             when {
                 c.tipo == AsientoTipo.OCUPADA -> {
                     holder.viewAsiento.background = circleDrawable("#BBBBBB")
@@ -268,26 +288,19 @@ class AsientosActivity : AppCompatActivity() {
                 seleccionadas.contains(codigo) -> {
                     holder.viewAsiento.background = circleDrawable("#4CAF50")
                     holder.itemView.setOnClickListener {
-                        val ap = holder.adapterPosition
-                        tooltipPos = if (tooltipPos == ap) -1 else ap
-                        seleccionadas.remove(codigo)
-                        onSel(c.fila, c.col, false)
-                        notifyDataSetChanged()
+                        tooltipPos = if (tooltipPos == holder.adapterPosition) -1 else holder.adapterPosition
+                        seleccionadas.remove(codigo); onSel(c.fila, c.col, false); notifyDataSetChanged()
                     }
                 }
                 else -> {
                     holder.viewAsiento.background = circleDrawable("#E8E8E8", "#CCCCCC")
                     holder.itemView.setOnClickListener {
-                        val ap = holder.adapterPosition
-                        tooltipPos = if (tooltipPos == ap) -1 else ap
-                        seleccionadas.add(codigo)
-                        onSel(c.fila, c.col, true)
-                        notifyDataSetChanged()
+                        tooltipPos = if (tooltipPos == holder.adapterPosition) -1 else holder.adapterPosition
+                        seleccionadas.add(codigo); onSel(c.fila, c.col, true); notifyDataSetChanged()
                     }
                 }
             }
         }
-
         override fun getItemCount() = celdas.size
     }
 }

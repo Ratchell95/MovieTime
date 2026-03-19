@@ -1,18 +1,29 @@
 package com.idat.movietime
 
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.os.Bundle
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
-data class ProductoItem(val id: Int, val nombre: String, val precio: Double, val emoji: String, var cantidad: Int = 0)
+data class ProductoItem(
+    val id:        Int,
+    val nombre:    String,
+    val precio:    Double,
+    val imagenRes: Int,
+    var cantidad:  Int = 0
+)
 
 class ConfiteriaActivity : AppCompatActivity() {
 
@@ -20,8 +31,8 @@ class ConfiteriaActivity : AppCompatActivity() {
     private lateinit var tvTotal:           TextView
     private lateinit var btnSiguiente:      Button
     private lateinit var adapter:           ProductoAdapter
+    private lateinit var drawerLayout:      DrawerLayout
 
-    // ── Extras recibidos ─────────────────────────────────────────
     private var butacas          = ""
     private var cantidadEntradas = 1
     private var totalEntradas    = 0.0
@@ -32,24 +43,26 @@ class ConfiteriaActivity : AppCompatActivity() {
     private var fecha            = ""
     private var duracion         = 0
     private var clasif           = ""
+    private var idFuncion        = 0
 
     private val listaPopcorn = mutableListOf(
-        ProductoItem(1,"POP CORN\nSALADO GIGANTE",21.0,"🍿"),
-        ProductoItem(2,"POP CORN\nSALADO GRANDE",15.0,"🍿"),
-        ProductoItem(3,"POP CORN\nSALADO MEDIANO",14.0,"🍿"),
-        ProductoItem(4,"POP CORN\nSALADO CHICO",13.0,"🍿"),
-        ProductoItem(5,"POP CORN\nDULCE GRANDE",15.0,"🍿"),
-        ProductoItem(6,"POP CORN\nDULCE CHICO",13.0,"🍿")
+        ProductoItem(1, "POP CORN\nSALADO GIGANTE", 21.0, R.drawable.popcorn_sl_g),
+        ProductoItem(2, "POP CORN\nSALADO GRANDE",  15.0, R.drawable.popcorn_sl_gr),
+        ProductoItem(3, "POP CORN\nSALADO MEDIANO", 14.0, R.drawable.popcorn_sl_m),
+        ProductoItem(4, "POP CORN\nSALADO CHICO",   13.0, R.drawable.popcorn_sl_ch),
+        ProductoItem(5, "POP CORN\nDULCE GRANDE",   15.0, R.drawable.popcorn_sl_gr),
+        ProductoItem(6, "POP CORN\nDULCE CHICO",    13.0, R.drawable.popcorn_sl_ch)
     )
     private val listaCombos = mutableListOf(
-        ProductoItem(7,"COMBO\nFAMILIAR",45.0,"🎁"),
-        ProductoItem(8,"COMBO\nDÚO",35.0,"🎁"),
-        ProductoItem(9,"COMBO\nPERSONAL",22.0,"🎁")
+        ProductoItem(7,  "COMBO\nFAMILIAR", 45.0, R.drawable.combo1),
+        ProductoItem(8,  "COMBO\nDÚO",      35.0, R.drawable.combo2),
+        ProductoItem(9,  "COMBO\nHOT DOG",  28.0, R.drawable.combo3),
+        ProductoItem(10, "COMBO\nPERSONAL DULCE", 22.0, R.drawable.combo4)
     )
     private val listaSandwich = mutableListOf(
-        ProductoItem(10,"HOT DOG\nCLÁSICO",12.0,"🌭"),
-        ProductoItem(11,"SANDWICH\nPOLLO",15.0,"🥪"),
-        ProductoItem(12,"NACHOS\nCHEESE",14.0,"🧀")
+        ProductoItem(11, "HOT DOG\nCLÁSICO", 12.0, R.drawable.hotdog),
+        ProductoItem(12, "NACHOS\nCHEESE",   14.0, R.drawable.nachos),
+        ProductoItem(13, "SANDWICH\nPOLLO",  15.0, R.drawable.sandwich)
     )
 
     private var productosActuales = listaPopcorn
@@ -58,21 +71,24 @@ class ConfiteriaActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_confiteria)
 
+        drawerLayout      = findViewById(R.id.drawerLayout)
         recyclerProductos = findViewById(R.id.recyclerProductos)
         tvTotal           = findViewById(R.id.tvTotal)
         btnSiguiente      = findViewById(R.id.btnSiguiente)
 
-        butacas          = intent.getStringExtra("butacas")           ?: ""
+        butacas          = intent.getStringExtra("butacas")        ?: ""
         cantidadEntradas = intent.getIntExtra("cantidad_entradas", 1)
-        totalEntradas    = intent.getDoubleExtra("total_entradas",    0.0)
-        titulo           = intent.getStringExtra("titulo")            ?: ""
-        sede             = intent.getStringExtra("sede")              ?: ""
-        hora             = intent.getStringExtra("hora")              ?: ""
-        sala             = intent.getStringExtra("sala")              ?: ""
-        fecha            = intent.getStringExtra("fecha")             ?: ""
-        duracion         = intent.getIntExtra("duracion_min",         0)
-        clasif           = intent.getStringExtra("clasificacion")     ?: ""
+        totalEntradas    = intent.getDoubleExtra("total_entradas", 0.0)
+        titulo           = intent.getStringExtra("titulo")         ?: ""
+        sede             = intent.getStringExtra("sede")           ?: ""
+        hora             = intent.getStringExtra("hora")           ?: ""
+        sala             = intent.getStringExtra("sala")           ?: ""
+        fecha            = intent.getStringExtra("fecha")          ?: ""
+        duracion         = intent.getIntExtra("duracion_min",      0)
+        clasif           = intent.getStringExtra("clasificacion")  ?: ""
+        idFuncion        = intent.getIntExtra("id_funcion",        0)
 
+        // btnAtras (flujo de compra)
         findViewById<TextView>(R.id.btnAtras)?.setOnClickListener { finish() }
 
         adapter = ProductoAdapter(productosActuales) { actualizarTotal() }
@@ -80,37 +96,41 @@ class ConfiteriaActivity : AppCompatActivity() {
         recyclerProductos.adapter = adapter
 
         setupCategorias()
+        setupDrawer()
         actualizarTotal()
 
         btnSiguiente.setOnClickListener {
             val totalConf = todosProductos().sumOf { it.precio * it.cantidad }
-            Intent(this, PagoActivity::class.java).also { i ->
-                i.putExtra("butacas",           butacas)
-                i.putExtra("cantidad_entradas", cantidadEntradas)
-                i.putExtra("total_entradas",    totalEntradas)   // ✅ propagado
-                i.putExtra("total_confiteria",  totalConf)
-                i.putExtra("titulo",            titulo)
-                i.putExtra("sede",              sede)
-                i.putExtra("hora",              hora)
-                i.putExtra("sala",              sala)            // ✅ propagado
-                i.putExtra("fecha",             fecha)
-                i.putExtra("duracion_min",      duracion)        // ✅ propagado
-                i.putExtra("clasificacion",     clasif)          // ✅ propagado
-                startActivity(i)
-            }
+            val granTotal = totalEntradas + totalConf
+            startActivity(Intent(this, PagoActivity::class.java).apply {
+                putExtra("butacas",           butacas)
+                putExtra("cantidad_entradas", cantidadEntradas)
+                putExtra("total_entradas",    totalEntradas)
+                putExtra("total_confiteria",  totalConf)
+                putExtra("gran_total",        granTotal)   // ← total real para PagoActivity
+                putExtra("titulo",            titulo)
+                putExtra("sede",              sede)
+                putExtra("hora",              hora)
+                putExtra("sala",              sala)
+                putExtra("fecha",             fecha)
+                putExtra("duracion_min",      duracion)
+                putExtra("clasificacion",     clasif)
+                putExtra("id_funcion",        idFuncion)
+            })
         }
     }
-
     private fun todosProductos() = listaPopcorn + listaCombos + listaSandwich
 
     private fun actualizarTotal() {
-        val total = todosProductos().sumOf { it.precio * it.cantidad }
-        tvTotal.text = "Total: S/ ${"%.2f".format(total)}"
-        btnSiguiente.backgroundTintList = android.content.res.ColorStateList.valueOf(
-            if (total > 0) Color.parseColor("#1A1A2E") else Color.parseColor("#777777")
+        val totalConf = todosProductos().sumOf { it.precio * it.cantidad }
+        val granTotal = totalEntradas + totalConf
+        tvTotal.text = "Total: S/ ${"%.2f".format(granTotal)}"
+        // Confitería es opcional → btnSiguiente siempre habilitado
+        btnSiguiente.backgroundTintList = ColorStateList.valueOf(
+            Color.parseColor("#1A1A2E")
         )
+        btnSiguiente.isEnabled = true
     }
-
     private fun setupCategorias() {
         val catMap = mapOf(
             R.id.catPopcorn  to listaPopcorn,
@@ -120,9 +140,8 @@ class ConfiteriaActivity : AppCompatActivity() {
         catMap.forEach { (id, lista) ->
             findViewById<TextView>(id)?.setOnClickListener {
                 catMap.keys.forEach { catId ->
-                    val tv = findViewById<TextView>(catId)
-                    tv?.setBackgroundColor(Color.parseColor("#EEEEEE"))
-                    tv?.setTextColor(Color.parseColor("#444444"))
+                    findViewById<TextView>(catId)?.setBackgroundColor(Color.parseColor("#EEEEEE"))
+                    findViewById<TextView>(catId)?.setTextColor(Color.parseColor("#444444"))
                 }
                 (it as TextView).setBackgroundColor(Color.parseColor("#222222"))
                 it.setTextColor(Color.WHITE)
@@ -132,23 +151,38 @@ class ConfiteriaActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupDrawer() {
+        findViewById<ImageButton>(R.id.btnMenu)?.setOnClickListener {
+            if (drawerLayout.isDrawerOpen(Gravity.START)) drawerLayout.closeDrawer(Gravity.START)
+            else drawerLayout.openDrawer(Gravity.START)
+        }
+        findViewById<View>(R.id.navCartelera)?.setOnClickListener   { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, PeliculasActivity::class.java)) }
+        findViewById<View>(R.id.navEntradas)?.setOnClickListener    { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, HistorialActivity::class.java)) }
+        findViewById<View>(R.id.navConfiteria)?.setOnClickListener  { drawerLayout.closeDrawer(Gravity.START) }
+        findViewById<View>(R.id.navHistorial)?.setOnClickListener   { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, HistorialActivity::class.java)) }
+        findViewById<View>(R.id.navQR)?.setOnClickListener         { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, QRScannerActivity::class.java)) }
+        findViewById<View>(R.id.navCerrarSesion)?.setOnClickListener {
+            drawerLayout.closeDrawer(Gravity.START)
+            startActivity(Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            })
+        }
+    }
+
     inner class ProductoAdapter(
         private var items: MutableList<ProductoItem>,
         private val onCambio: () -> Unit
     ) : RecyclerView.Adapter<ProductoAdapter.VH>() {
 
-        fun updateLista(nuevos: MutableList<ProductoItem>) {
-            items = nuevos
-            notifyDataSetChanged()
-        }
+        fun updateLista(nuevos: MutableList<ProductoItem>) { items = nuevos; notifyDataSetChanged() }
 
         inner class VH(v: View) : RecyclerView.ViewHolder(v) {
-            val tvEmoji:    TextView = v.findViewById(R.id.tvEmojiProducto)
-            val tvNombre:   TextView = v.findViewById(R.id.tvNombreProducto)
-            val tvPrecio:   TextView = v.findViewById(R.id.tvPrecio)
-            val tvCantidad: TextView = v.findViewById(R.id.tvCantidad)
-            val btnMenos:   TextView = v.findViewById(R.id.btnMenos)
-            val btnMas:     TextView = v.findViewById(R.id.btnMas)
+            val ivProducto: ImageView = v.findViewById(R.id.ivProducto)
+            val tvNombre:   TextView  = v.findViewById(R.id.tvNombreProducto)
+            val tvPrecio:   TextView  = v.findViewById(R.id.tvPrecio)
+            val tvCantidad: TextView  = v.findViewById(R.id.tvCantidad)
+            val btnMenos:   TextView  = v.findViewById(R.id.btnMenos)
+            val btnMas:     TextView  = v.findViewById(R.id.btnMas)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, vt: Int) =
@@ -156,7 +190,7 @@ class ConfiteriaActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(h: VH, pos: Int) {
             val item = items[pos]
-            h.tvEmoji.text    = item.emoji
+            h.ivProducto.setImageResource(item.imagenRes)
             h.tvNombre.text   = item.nombre
             h.tvPrecio.text   = "S/${item.precio.toInt()}.00"
             h.tvCantidad.text = item.cantidad.toString()
@@ -167,7 +201,6 @@ class ConfiteriaActivity : AppCompatActivity() {
                 item.cantidad++; h.tvCantidad.text = item.cantidad.toString(); onCambio()
             }
         }
-
         override fun getItemCount() = items.size
     }
 }

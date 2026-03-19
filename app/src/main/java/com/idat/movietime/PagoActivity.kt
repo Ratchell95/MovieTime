@@ -9,6 +9,8 @@ import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
+import com.idat.movietime.db.DatabaseHelper
+import com.idat.movietime.model.VentaDetalle
 
 class PagoActivity : AppCompatActivity() {
 
@@ -47,28 +49,171 @@ class PagoActivity : AppCompatActivity() {
 
         bindViews()
 
-        val butacas         = intent.getStringExtra("butacas")          ?: ""
-        val cantidadEntradas= intent.getIntExtra("cantidad_entradas", 1)
-        val titulo          = intent.getStringExtra("titulo")           ?: ""
-        val sede            = intent.getStringExtra("sede")             ?: ""
-        val hora            = intent.getStringExtra("hora")             ?: ""
-        val fecha           = intent.getStringExtra("fecha")            ?: ""
-        val totalConfiteria = intent.getDoubleExtra("total_confiteria", 0.0)
-        // Usa total_entradas calculado en EntradaActivity si existe, si no calcula básico
-        val totalEntradas   = intent.getDoubleExtra("total_entradas", cantidadEntradas * 18.0)
-        val totalFinal      = totalEntradas + totalConfiteria
+        val butacas          = intent.getStringExtra("butacas")          ?: ""
+        val cantidadEntradas = intent.getIntExtra("cantidad_entradas", 1)
+        val titulo           = intent.getStringExtra("titulo")           ?: ""
+        val sede             = intent.getStringExtra("sede")             ?: ""
+        val sala             = intent.getStringExtra("sala")             ?: sede
+        val hora             = intent.getStringExtra("hora")             ?: ""
+        val fecha            = intent.getStringExtra("fecha")            ?: ""
+        val totalConfiteria  = intent.getDoubleExtra("total_confiteria", 0.0)
+        val totalEntradas    = intent.getDoubleExtra("total_entradas", cantidadEntradas * 18.0)
+        val totalFinal       = totalEntradas + totalConfiteria
+
+        val idFuncion        = intent.getIntExtra("id_funcion", -1)
+        val idButacasStr     = intent.getStringExtra("ids_butacas") ?: ""
+        val codigosQRStr     = intent.getStringExtra("codigos_qr")  ?: ""
+        val idPromocion      = intent.getIntExtra("id_promocion", -1).takeIf { it != -1 }
+        val descuento        = intent.getDoubleExtra("descuento", 0.0)
+        val subtotal         = totalFinal + descuento
+
+        val confiteriaStr    = intent.getStringExtra("confiteria_items") ?: ""
 
         tvTotal.text = "Total:  S/ ${"%.2f".format(totalFinal)}"
 
         findViewById<TextView>(R.id.btnAtras)?.setOnClickListener { finish() }
-
         iniciarCronometro()
         setupComprobante()
         setupMetodoPago()
 
         btnPagar.setOnClickListener {
-            procesarPago(butacas, cantidadEntradas, titulo, sede, hora, fecha, totalFinal)
+            procesarPago(
+                butacas, cantidadEntradas, titulo, sede, sala, hora, fecha,
+                totalFinal, subtotal, descuento,
+                idFuncion, idButacasStr, codigosQRStr,
+                confiteriaStr, idPromocion
+            )
         }
+    }
+
+    private fun procesarPago(
+        butacas: String, cantidad: Int, titulo: String,
+        sede: String, sala: String, hora: String, fecha: String,
+        total: Double, subtotal: Double, descuento: Double,
+        idFuncion: Int, idButacasStr: String, codigosQRStr: String,
+        confiteriaStr: String, idPromocion: Int?
+    ) {
+        if (!switchTerminos.isChecked) {
+            Toast.makeText(this, "Acepta los Términos y Condiciones para continuar", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (etNombre.text.isNullOrBlank())   { etNombre.error   = "Requerido"; return }
+        if (etApellido.text.isNullOrBlank()) { etApellido.error = "Requerido"; return }
+        if (etEmail.text.isNullOrBlank())    { etEmail.error    = "Requerido"; return }
+
+        if (tipoComprobante == "Factura") {
+            if (etRuc.text.isNullOrBlank())         { etRuc.error         = "Requerido"; return }
+            if (etRazonSocial.text.isNullOrBlank()) { etRazonSocial.error = "Requerido"; return }
+        }
+
+        when (metodoPago) {
+            "Tarjeta" -> {
+                if (etNumTarjeta.text.isNullOrBlank())    { etNumTarjeta.error    = "Requerido"; return }
+                if (etVencimiento.text.isNullOrBlank())   { etVencimiento.error   = "Requerido"; return }
+                if (etCvv.text.isNullOrBlank())           { etCvv.error           = "Requerido"; return }
+                if (etNombreTarjeta.text.isNullOrBlank()) { etNombreTarjeta.error = "Requerido"; return }
+            }
+            "Yape" -> {
+                if (etCelularYape.text.isNullOrBlank()) { etCelularYape.error = "Requerido"; return }
+            }
+        }
+
+        timer?.cancel()
+
+        val codigoQRFinal = if (codigosQRStr.isNotEmpty()) {
+            codigosQRStr.split("|").firstOrNull() ?: generarCodigoQR()
+        } else {
+            generarCodigoQR()
+        }
+
+        val idVenta = guardarEnSQLite(
+            total, subtotal, descuento,
+            idFuncion, idButacasStr, codigoQRFinal,
+            confiteriaStr, idPromocion,
+            cantidad, butacas
+        )
+
+        Intent(this, ComprobanteActivity::class.java).also {
+            it.putExtra("titulo",            titulo)
+            it.putExtra("total",             total)
+            it.putExtra("gran_total",        total)       // ambas keys por seguridad
+            it.putExtra("metodo_pago",       metodoPago)
+            it.putExtra("tipo_comprobante",  tipoComprobante)  // FIX: key correcta
+            it.putExtra("butacas",           butacas)
+            it.putExtra("sede",              sede)
+            it.putExtra("sala",              sala)             // FIX: agregar sala
+            it.putExtra("hora",              hora)
+            it.putExtra("fecha",             fecha)
+            it.putExtra("nombre",            "${etNombre.text} ${etApellido.text}")
+            it.putExtra("email",             etEmail.text.toString())
+            it.putExtra("codigo_qr",         codigoQRFinal)
+            it.putExtra("id_venta",          idVenta.toInt())
+            startActivity(it)
+            finish()
+        }
+    }
+
+    private fun guardarEnSQLite(
+        total: Double, subtotal: Double, descuento: Double,
+        idFuncion: Int, idButacasStr: String, codigoQR: String,
+        confiteriaStr: String, idPromocion: Int?,
+        cantidad: Int, butacas: String
+    ): Long {
+        val idCliente = com.idat.movietime.network.SessionManager(this).getIdUsuario()
+
+        val db = DatabaseHelper(this)
+
+        val idButacas = if (idButacasStr.isNotEmpty()) {
+            idButacasStr.split(",").mapNotNull { it.trim().toIntOrNull() }
+        } else {
+            emptyList()
+        }
+
+        val codigosQR = if (idButacas.isNotEmpty()) {
+            idButacas.mapIndexed { i, _ ->
+                if (i == 0) codigoQR else generarCodigoQR()
+            }
+        } else {
+            listOf(codigoQR)
+        }
+
+        val productosConfit = mutableListOf<VentaDetalle.ConfiteriaItem>()
+        if (confiteriaStr.isNotEmpty()) {
+            confiteriaStr.split(",").forEach { parte ->
+                val campos = parte.split(":")
+                if (campos.size >= 4) {
+                    val item = VentaDetalle.ConfiteriaItem()
+                    item.idProducto     = campos[0].trim().toIntOrNull() ?: 0
+                    item.cantidad       = campos[1].trim().toIntOrNull() ?: 1
+                    item.precioUnitario = campos[2].trim().toDoubleOrNull() ?: 0.0
+                    item.subtotal       = campos[3].trim().toDoubleOrNull() ?: 0.0
+                    if (item.idProducto > 0) productosConfit.add(item)
+                }
+            }
+        }
+
+        val idVenta = db.insertarVentaCompleta(
+            idCliente,
+            idFuncion,
+            idButacas,
+            if (idButacas.isEmpty()) total / maxOf(cantidad, 1) else total / maxOf(idButacas.size, 1),
+            codigosQR,
+            productosConfit,
+            subtotal,
+            descuento,
+            total,
+            tipoComprobante,
+            metodoPago,
+            idPromocion
+        )
+
+        db.close()
+        return idVenta
+    }
+
+    private fun generarCodigoQR(): String {
+        val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        return "MT-" + (1..8).map { chars.random() }.joinToString("")
     }
 
     private fun bindViews() {
@@ -122,13 +267,9 @@ class PagoActivity : AppCompatActivity() {
     }
 
     private fun setupMetodoPago() {
-
         seleccionarTarjeta()
-
         rbTarjeta.setOnClickListener { seleccionarTarjeta() }
         rbYape.setOnClickListener    { seleccionarYape() }
-
-
         findViewById<View>(R.id.rgMetodoPago)?.setOnClickListener  { seleccionarTarjeta() }
         findViewById<View>(R.id.rgMetodoPago2)?.setOnClickListener { seleccionarYape() }
 
@@ -151,7 +292,6 @@ class PagoActivity : AppCompatActivity() {
                 editing = false
             }
         })
-
         setupPinYape()
     }
 
@@ -185,53 +325,6 @@ class PagoActivity : AppCompatActivity() {
                     if (!s.isNullOrEmpty() && i < pins.size - 1) pins[i + 1].requestFocus()
                 }
             })
-        }
-    }
-
-    private fun procesarPago(
-        butacas: String, cantidad: Int, titulo: String,
-        sede: String, hora: String, fecha: String, total: Double
-    ) {
-        if (!switchTerminos.isChecked) {
-            Toast.makeText(this, "Acepta los Términos y Condiciones para continuar", Toast.LENGTH_SHORT).show()
-            return
-        }
-        if (etNombre.text.isNullOrBlank())   { etNombre.error   = "Requerido"; return }
-        if (etApellido.text.isNullOrBlank())  { etApellido.error = "Requerido"; return }
-        if (etEmail.text.isNullOrBlank())     { etEmail.error    = "Requerido"; return }
-
-        if (tipoComprobante == "Factura") {
-            if (etRuc.text.isNullOrBlank())         { etRuc.error         = "Requerido"; return }
-            if (etRazonSocial.text.isNullOrBlank()) { etRazonSocial.error = "Requerido"; return }
-        }
-
-        when (metodoPago) {
-            "Tarjeta" -> {
-                if (etNumTarjeta.text.isNullOrBlank())    { etNumTarjeta.error    = "Requerido"; return }
-                if (etVencimiento.text.isNullOrBlank())   { etVencimiento.error   = "Requerido"; return }
-                if (etCvv.text.isNullOrBlank())           { etCvv.error           = "Requerido"; return }
-                if (etNombreTarjeta.text.isNullOrBlank()) { etNombreTarjeta.error = "Requerido"; return }
-            }
-            "Yape" -> {
-                if (etCelularYape.text.isNullOrBlank()) { etCelularYape.error = "Requerido"; return }
-            }
-        }
-
-        timer?.cancel()
-
-        Intent(this, ComprobanteActivity::class.java).also {
-            it.putExtra("titulo",       titulo)
-            it.putExtra("total",        total)
-            it.putExtra("metodo_pago",  metodoPago)
-            it.putExtra("comprobante",  tipoComprobante)
-            it.putExtra("butacas",      butacas)
-            it.putExtra("sede",         sede)
-            it.putExtra("hora",         hora)
-            it.putExtra("fecha",        fecha)
-            it.putExtra("nombre",       "${etNombre.text} ${etApellido.text}")
-            it.putExtra("email",        etEmail.text.toString())
-            startActivity(it)
-            finish()
         }
     }
 

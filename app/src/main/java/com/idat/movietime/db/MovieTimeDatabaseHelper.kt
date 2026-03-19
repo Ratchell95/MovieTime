@@ -265,12 +265,21 @@ class MovieTimeDatabaseHelper(context: Context) :
             )
         """.trimIndent())
 
-        // Datos iniciales de roles
         db.execSQL("INSERT OR IGNORE INTO roles (nombre, descripcion) VALUES ('Administrador', 'Acceso total al sistema')")
         db.execSQL("INSERT OR IGNORE INTO roles (nombre, descripcion) VALUES ('Taquillero', 'Venta presencial de entradas')")
         db.execSQL("INSERT OR IGNORE INTO roles (nombre, descripcion) VALUES ('Cliente', 'Compra de entradas en app')")
         db.execSQL("INSERT OR IGNORE INTO roles (nombre, descripcion) VALUES ('Confiteria', 'Personal de confiteria')")
         db.execSQL("INSERT OR IGNORE INTO roles (nombre, descripcion) VALUES ('Control', 'Control de acceso QR')")
+
+
+        db.execSQL("""
+            INSERT OR IGNORE INTO promociones
+                (nombre, descripcion, tipo_descuento, valor, aplica_a, fecha_inicio, fecha_fin, estado)
+            VALUES
+                ('PROMOYAPE', 'Descuento especial pagando con Yape',
+                 'Porcentaje', 10.0, 'Ambos',
+                 '2025-01-01', '2027-12-31', 'Activa')
+        """.trimIndent())
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {

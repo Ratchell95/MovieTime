@@ -20,7 +20,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- QR Code -->
+
     <ImageView
         android:id="@+id/ivQR"
         android:layout_width="220dp"
@@ -44,7 +44,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Detalles -->
+
     <LinearLayout
         android:id="@+id/layoutDetalles"
         android:layout_width="0dp"
@@ -95,6 +95,23 @@
         android:textSize="12sp"
         android:gravity="center"
         app:layout_constraintTop_toBottomOf="@id/layoutDetalles"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:id="@+id/tvNota" />
+
+    <Button
+        android:id="@+id/btnInicio"
+        android:layout_width="0dp"
+        android:layout_height="52dp"
+        android:layout_marginTop="20dp"
+        android:backgroundTint="#003087"
+        android:text="Ir al inicio"
+        android:textAllCaps="false"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:cornerRadius="26dp"
+        app:layout_constraintTop_toBottomOf="@id/tvNota"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 

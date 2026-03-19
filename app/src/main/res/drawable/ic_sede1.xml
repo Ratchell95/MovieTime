@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Fondo color de sede -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#003087" />
+        </shape>
+    </item>
+    <!-- Círculo central blanco translúcido -->
+    <item
+        android:width="80dp"
+        android:height="80dp"
+        android:gravity="center">
+        <shape android:shape="oval">
+            <solid android:color="#33FFFFFF" />
+        </shape>
+    </item>
+</layer-list>

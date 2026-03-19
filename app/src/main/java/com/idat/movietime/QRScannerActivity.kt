@@ -1,58 +1,148 @@
 package com.idat.movietime
 
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.zxing.integration.android.IntentIntegrator
-import com.google.zxing.integration.android.IntentResult
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.common.InputImage
+import com.idat.movietime.db.DatabaseHelper
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 class QRScannerActivity : AppCompatActivity() {
 
+    private lateinit var previewView: PreviewView
     private lateinit var tvEstado: TextView
+    private lateinit var cameraExecutor: ExecutorService
+    private var yaEscaneado = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_qr_scanner)
 
-        tvEstado = findViewById(R.id.tvEstado)
+        findViewById<TextView>(R.id.tvToolbarTitulo)?.text = "Escanear QR"
+        findViewById<android.view.View>(R.id.btnAtras)?.setOnClickListener { finish() }
 
-        iniciarScanner()
-    }
+        previewView = findViewById(R.id.previewView)
+        tvEstado    = findViewById(R.id.tvEstado)
+        cameraExecutor = Executors.newSingleThreadExecutor()
 
-    private fun iniciarScanner() {
-        val integrator = IntentIntegrator(this)
-        integrator.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE)
-        integrator.setPrompt("Apunta la cámara al código QR de la entrada")
-        integrator.setCameraId(0)
-        integrator.setBeepEnabled(true)
-        integrator.setBarcodeImageEnabled(false)
-        integrator.initiateScan()
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        val result: IntentResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, data)
-
-        if (result.contents != null) {
-            val codigoQR = result.contents
-            tvEstado.text = "QR leído: $codigoQR"
-            validarQR(codigoQR)
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA)
+            == PackageManager.PERMISSION_GRANTED) {
+            iniciarCamara()
         } else {
-            Toast.makeText(this, "Escaneo cancelado", Toast.LENGTH_SHORT).show()
-            finish()
+            ActivityCompat.requestPermissions(this,
+                arrayOf(android.Manifest.permission.CAMERA), 100)
+        }
+    }
+
+    private fun iniciarCamara() {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+        cameraProviderFuture.addListener({
+            val cameraProvider = cameraProviderFuture.get()
+
+            val preview = Preview.Builder().build().also {
+                it.setSurfaceProvider(previewView.surfaceProvider)
+            }
+
+            val imageAnalyzer = ImageAnalysis.Builder()
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .build()
+                .also { analysis ->
+                    analysis.setAnalyzer(cameraExecutor) { imageProxy ->
+                        if (!yaEscaneado) {
+                            val mediaImage = imageProxy.image
+                            if (mediaImage != null) {
+                                val image = InputImage.fromMediaImage(
+                                    mediaImage, imageProxy.imageInfo.rotationDegrees)
+                                val scanner = BarcodeScanning.getClient()
+                                scanner.process(image)
+                                    .addOnSuccessListener { barcodes ->
+                                        for (barcode in barcodes) {
+                                            if (barcode.format == Barcode.FORMAT_QR_CODE) {
+                                                val raw = barcode.rawValue ?: continue
+                                                yaEscaneado = true
+                                                procesarQR(raw)
+                                                break
+                                            }
+                                        }
+                                    }
+                                    .addOnCompleteListener { imageProxy.close() }
+                            } else {
+                                imageProxy.close()
+                            }
+                        } else {
+                            imageProxy.close()
+                        }
+                    }
+                }
+
+            try {
+                cameraProvider.unbindAll()
+                cameraProvider.bindToLifecycle(this,
+                    CameraSelector.DEFAULT_BACK_CAMERA, preview, imageAnalyzer)
+            } catch (e: Exception) {
+                tvEstado.text = "Error al iniciar cámara"
+            }
+        }, ContextCompat.getMainExecutor(this))
+    }
+
+    private fun procesarQR(contenido: String) {
+        val partes = contenido.split("|")
+        val intent = Intent(this, DetalleQRActivity::class.java)
+
+        if (partes.size >= 7 && partes[0] == "MOVIETIME") {
+            val codigoQR = partes[1]
+            val pelicula = partes[2]
+            val sala     = partes[3]
+            val butaca   = partes[4]
+            val fecha    = partes[5]
+            val estado   = partes[6]
+
+            val db     = DatabaseHelper(this)
+            val idVenta = db.getIdVentaPorCodigoQR(codigoQR)
+            db.close()
+
+            intent.putExtra("qr_invalido", false)
+            intent.putExtra("codigo_qr",   codigoQR)
+            intent.putExtra("id_venta",    idVenta)
+            intent.putExtra("pelicula",    pelicula)
+            intent.putExtra("sala",        sala)
+            intent.putExtra("butaca",      butaca)
+            intent.putExtra("fecha",       fecha)
+            intent.putExtra("estado",      estado)
+        } else {
+            intent.putExtra("qr_invalido", true)
+            intent.putExtra("codigo_qr",   contenido)
         }
 
-        super.onActivityResult(requestCode, resultCode, data)
+        runOnUiThread { startActivity(intent) }
     }
 
-    private fun validarQR(codigoQR: String) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 100 && grantResults.isNotEmpty()
+            && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            iniciarCamara()
+        } else {
+            tvEstado.text = "Se necesita permiso de cámara"
+        }
+    }
 
-        Toast.makeText(
-            this,
-            "✓ Acceso válido: $codigoQR",
-            Toast.LENGTH_LONG
-        ).show()
-        finish()
+    override fun onDestroy() {
+        super.onDestroy()
+        cameraExecutor.shutdown()
     }
 }

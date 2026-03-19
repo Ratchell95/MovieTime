@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/toolbar"
+    android:layout_width="match_parent"
+    android:layout_height="56dp"
+    android:background="#003087"
+    android:gravity="center_vertical"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp"
+    android:orientation="horizontal">
+
+    <!-- Botón Atrás izquierda — ocupa mismo espacio que btnMenu -->
+    <TextView
+        android:id="@+id/btnAtras"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="← Atrás"
+        android:textColor="#FFFFFF"
+        android:textSize="15sp"
+        android:padding="10dp"
+        android:minWidth="44dp"
+        android:gravity="center"
+        android:clickable="true"
+        android:focusable="true" />
+
+    <!-- Flex izquierdo -->
+    <View
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!-- Título centrado -->
+    <TextView
+        android:id="@+id/tvToolbarTitulo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:gravity="center" />
+
+    <!-- Cronómetro derecho — GONE por defecto, solo visible en AsientosActivity y EntradaActivity -->
+    <TextView
+        android:id="@+id/tvCronometro"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="⏱ 10:00"
+        android:textColor="#FFFFFF"
+        android:textSize="13sp"
+        android:padding="10dp"
+        android:minWidth="44dp"
+        android:gravity="center"
+        android:visibility="gone" />
+
+</LinearLayout>
