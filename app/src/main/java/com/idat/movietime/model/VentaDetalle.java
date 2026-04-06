@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class VentaDetalle {
-
     public int    idVenta;
     public String fechaVenta;
     public double subtotal;
@@ -15,7 +14,13 @@ public class VentaDetalle {
     public String canalVenta;
     public String estadoVenta;
 
-    public List<EntradaItem>    entradas            = new ArrayList<>();
+    public String tituloPeliculaAux;
+    public String imagenUrlAux;
+    public int    idPeliculaAux; // ✅ CORREGIDO: Ahora está en la clase principal
+
+    public List<EntradaItem> entradas = new ArrayList<>();
+    public String tipoButaca;
+
     public List<ConfiteriaItem> productosConfiteria = new ArrayList<>();
 
     public boolean tieneEntradas() {
@@ -25,7 +30,6 @@ public class VentaDetalle {
     public boolean tieneConfiteria() {
         return productosConfiteria != null && !productosConfiteria.isEmpty();
     }
-
     public boolean tieneDescuento() {
         return descuento > 0;
     }
@@ -42,23 +46,13 @@ public class VentaDetalle {
         public String fechaHoraFuncion;
         public String tipoFuncion;
         public String nombreSala;
-        public String tipoSala;       // ← campo que faltaba
+        public String tipoSala;
         public String fila;
         public int    numero;
         public String tipoButaca;
 
         public String getButacaLabel() {
             return (fila != null ? fila : "") + numero;
-        }
-
-        public String buildQrContent() {
-            return "MOVIETIME"
-                    + "|" + (codigoQR           != null ? codigoQR           : "")
-                    + "|" + (tituloPelicula      != null ? tituloPelicula      : "")
-                    + "|" + (nombreSala          != null ? nombreSala          : "")
-                    + "|" + getButacaLabel()
-                    + "|" + (fechaHoraFuncion    != null ? fechaHoraFuncion    : "")
-                    + "|" + (estadoIngreso       != null ? estadoIngreso       : "Pendiente");
         }
     }
 

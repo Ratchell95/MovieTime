@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginVertical="8dp"
+    app:cardBackgroundColor="#1A1A2E"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="8dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/ivPosterTicket"
+            android:layout_width="90dp"
+            android:layout_height="140dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_pelicula_placeholder" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <TextView
+                android:id="@+id/tvTituloTicket"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="TÍTULO PELÍCULA"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:maxLines="2"
+                android:ellipsize="end"/>
+
+            <TextView
+                android:id="@+id/tvFechaTicket"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="15 Mar 2026 - 08:30 PM"
+                android:textColor="#4FC3F7"
+                android:textSize="13sp"
+                android:layout_marginTop="4dp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/tvInfoTicket"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Sala 05 | Butacas: J8, J9"
+                android:textColor="#AAAAAA"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp"/>
+
+            <View android:layout_height="0dp" android:layout_weight="1" android:layout_width="0dp"/>
+
+            <TextView
+                android:id="@+id/tvEstadoTicket"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="● PENDIENTE"
+                android:textColor="#4CAF50"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_marginTop="8dp"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="55dp"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:background="#0D0D1A"
+            android:gravity="center">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_drawer_qr"
+                app:tint="#FFFFFF"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Ver\nQR"
+                android:textAlignment="center"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp"
+                android:layout_marginTop="6dp"/>
+        </LinearLayout>
+    </LinearLayout>
+</androidx.cardview.widget.CardView>

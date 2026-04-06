@@ -1,127 +1,148 @@
 package com.idat.movietime
 
+import android.graphics.Color
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.cardview.widget.CardView
 import com.idat.movietime.db.DatabaseHelper
+import com.idat.movietime.network.SessionManager
 
 class DetalleQRActivity : AppCompatActivity() {
+
+    private lateinit var dbHelper: DatabaseHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_detalle_qr)
 
-        findViewById<TextView>(R.id.tvToolbarTitulo)?.text = "Detalle de entrada"
+        dbHelper = DatabaseHelper(this)
+
+        // 1. Toolbar superior
         findViewById<View>(R.id.btnAtras)?.setOnClickListener { finish() }
+        findViewById<TextView>(R.id.tvToolbarTitulo)?.text = "Control de Ingreso"
 
-        val tvDetalle   = findViewById<TextView>(R.id.tvDetalleQR)
-        val tvBadge     = findViewById<TextView>(R.id.tvEstadoBadge)
-        val btnEscanear = findViewById<Button>(R.id.btnEscanearOtro)
+        // 2. Vincular vistas del nuevo diseño
+        val tvEstadoBadge     = findViewById<TextView>(R.id.tvEstadoBadge)
+        val tvPeliculaDetalle = findViewById<TextView>(R.id.tvPeliculaDetalle)
+        val tvSalaDetalle     = findViewById<TextView>(R.id.tvSalaDetalle)
+        val tvButacaDetalle   = findViewById<TextView>(R.id.tvButacaDetalle)
+        val tvFechaDetalle    = findViewById<TextView>(R.id.tvFechaDetalle)
+        val tvEstadoDetalle   = findViewById<TextView>(R.id.tvEstadoDetalle)
+        val tvCodigoDetalle   = findViewById<TextView>(R.id.tvCodigoDetalle)
 
-        val invalido  = intent.getBooleanExtra("qr_invalido", false)
-        val codigoQR  = intent.getStringExtra("codigo_qr")  ?: ""
-        val idVenta   = intent.getIntExtra("id_venta", -1)
-        val pelicula  = intent.getStringExtra("pelicula")   ?: ""
-        val sala      = intent.getStringExtra("sala")       ?: ""
-        val butaca    = intent.getStringExtra("butaca")     ?: ""
-        val fecha     = intent.getStringExtra("fecha")      ?: ""
-        val estado    = intent.getStringExtra("estado")     ?: "Pendiente"
+        val cardConfiteriaQR  = findViewById<CardView>(R.id.cardConfiteriaQR)
+        val containerConfiteriaQR = findViewById<LinearLayout>(R.id.containerConfiteriaQR)
 
-        if (invalido) {
+        val cardPagoQR        = findViewById<CardView>(R.id.cardPagoQR)
+        val tvMetodoPagoQR    = findViewById<TextView>(R.id.tvMetodoPagoQR)
+        val tvTotalQR         = findViewById<TextView>(R.id.tvTotalQR)
 
-            tvBadge.text = "❌  QR no válido"
-            tvBadge.setBackgroundResource(R.drawable.bg_badge_red)
-            tvDetalle.text = "Este código QR no pertenece a MovieTime.\n\nContenido:\n$codigoQR"
+        val btnValidarEntrada = findViewById<Button>(R.id.btnValidarEntrada)
+        val btnEscanearOtro   = findViewById<Button>(R.id.btnEscanearOtro)
 
-        } else if (idVenta != -1) {
+        // Botón secundario para regresar a la cámara
+        btnEscanearOtro.setOnClickListener { finish() }
 
-            val db    = DatabaseHelper(this)
-            val venta = db.getDetalleVenta(idVenta)
-            db.close()
+        val esInvalido = intent.getBooleanExtra("qr_invalido", true)
+        val codigoQR   = intent.getStringExtra("codigo_qr") ?: ""
 
-            if (venta != null) {
+        // ── CASO A: QR NO ES DE LA APP (Inválido) ─────────
+        if (esInvalido) {
+            tvEstadoBadge.text   = "Inválido"
+            tvEstadoDetalle.text = "CÓDIGO QR INVÁLIDO"
+            tvEstadoDetalle.setTextColor(Color.parseColor("#F44336")) // Rojo
 
-                if (venta.estadoVenta == "Anulada") {
-                    tvBadge.text = "🚫  Anulada"
-                    tvBadge.setBackgroundResource(R.drawable.bg_badge_red)
-                } else {
-                    tvBadge.text = "✅  Entrada válida"
-                    tvBadge.setBackgroundResource(R.drawable.bg_badge_green)
-                }
+            tvPeliculaDetalle.text = "Desconocido"
+            tvSalaDetalle.text     = "—"
+            tvButacaDetalle.text   = "—"
+            tvFechaDetalle.text    = "—"
+            tvCodigoDetalle.text   = codigoQR
 
-                val sb = StringBuilder()
+            btnValidarEntrada.visibility = View.GONE
+            return
+        }
 
-                // Entradas
-                if (venta.entradas.isNotEmpty()) {
-                    val e = venta.entradas[0]
-                    sb.appendLine("🎬  ${e.tituloPelicula}")
-                    sb.appendLine("🎭  ${e.nombreSala}  (${e.tipoSala})")
-                    sb.appendLine("💺  Butaca ${e.fila}${e.numero}  ·  ${e.tipoButaca}")
-                    sb.appendLine("📅  ${e.fechaHoraFuncion}")
-                    sb.appendLine("🎞️  ${e.formato}  ·  ${e.clasificacion}")
-                    if (venta.entradas.size > 1) {
-                        val todas = venta.entradas.joinToString(", ") { "${it.fila}${it.numero}" }
-                        sb.appendLine("💺  Todas las butacas: $todas")
+        // ── CASO B: QR ES CORRECTO ─────────
+        val pelicula = intent.getStringExtra("pelicula") ?: ""
+        val sala     = intent.getStringExtra("sala") ?: ""
+        val butacas  = intent.getStringExtra("butaca") ?: ""
+        val fecha    = intent.getStringExtra("fecha") ?: ""
+        val idVenta  = intent.getIntExtra("id_venta", -1)
+
+        tvPeliculaDetalle.text = pelicula
+        tvSalaDetalle.text     = sala
+        tvButacaDetalle.text   = butacas
+        tvFechaDetalle.text    = fecha
+        tvCodigoDetalle.text   = codigoQR
+
+        // Consultar la base de datos para ver el estado real
+        val estadoReal = dbHelper.getEstadoIngreso(codigoQR) ?: "No existe"
+        val detalleVenta = if (idVenta > 0) dbHelper.getDetalleVenta(idVenta) else null
+
+        // Mostrar Confitería y Pago si el cliente compró algo extra
+        if (detalleVenta != null) {
+            cardPagoQR.visibility = View.VISIBLE
+            tvMetodoPagoQR.text = "${detalleVenta.metodoPago} (${detalleVenta.tipoComprobante})"
+            tvTotalQR.text = "S/ %.2f".format(detalleVenta.total)
+
+            if (detalleVenta.tieneConfiteria()) {
+                cardConfiteriaQR.visibility = View.VISIBLE
+                containerConfiteriaQR.removeAllViews()
+                for (item in detalleVenta.productosConfiteria) {
+                    val tvItem = TextView(this).apply {
+                        text = "${item.cantidad}x ${item.nombreProducto}"
+                        setTextColor(Color.parseColor("#CCCCCC"))
+                        textSize = 14f
+                        setPadding(0, 0, 0, 8)
                     }
-                    sb.appendLine()
+                    containerConfiteriaQR.addView(tvItem)
                 }
-
-                // Confitería
-                if (venta.productosConfiteria.isNotEmpty()) {
-                    sb.appendLine("🍿  Confitería:")
-                    for (p in venta.productosConfiteria) {
-                        sb.appendLine("    ${p.cantidad}x ${p.nombreProducto}   S/ ${"%.2f".format(p.subtotal)}")
-                    }
-                    sb.appendLine()
-                }
-
-                // Pago
-                sb.appendLine("💳  ${venta.metodoPago}  ·  ${venta.tipoComprobante}")
-                sb.appendLine("💰  Total:  S/ ${"%.2f".format(venta.total)}")
-                if (venta.descuento > 0)
-                    sb.appendLine("🏷️  Descuento aplicado:  S/ ${"%.2f".format(venta.descuento)}")
-                sb.appendLine()
-                sb.appendLine("🔑  Cód: $codigoQR")
-
-                tvDetalle.text = sb.toString().trimEnd()
-
-            } else {
-                mostrarDatosQR(tvBadge, tvDetalle, pelicula, sala, butaca, fecha, estado, codigoQR)
             }
-
-        } else {
-
-            mostrarDatosQR(tvBadge, tvDetalle, pelicula, sala, butaca, fecha, estado, codigoQR)
         }
 
-        btnEscanear.setOnClickListener {
-            finish()
+        // Aplicar los colores a los estados (Mantiene el diseño oscuro)
+        when (estadoReal) {
+            "Pendiente" -> {
+                tvEstadoBadge.text   = "Pendiente"
+                tvEstadoDetalle.text = "LISTO PARA INGRESAR"
+                tvEstadoDetalle.setTextColor(Color.parseColor("#4CAF50")) // Verde
+                btnValidarEntrada.visibility = View.VISIBLE
+            }
+            "Validado" -> {
+                tvEstadoBadge.text   = "Validado"
+                tvEstadoDetalle.text = "⛔ ENTRADA YA UTILIZADA"
+                tvEstadoDetalle.setTextColor(Color.parseColor("#F44336")) // Rojo
+                btnValidarEntrada.visibility = View.GONE
+            }
+            else -> {
+                tvEstadoBadge.text   = "Error"
+                tvEstadoDetalle.text = "TICKET NO ENCONTRADO"
+                tvEstadoDetalle.setTextColor(Color.parseColor("#F44336")) // Rojo
+                btnValidarEntrada.visibility = View.GONE
+            }
         }
-    }
 
-    private fun mostrarDatosQR(
-        tvBadge: TextView, tvDetalle: TextView,
-        pelicula: String, sala: String, butaca: String,
-        fecha: String, estado: String, codigoQR: String
-    ) {
-        val emoji = if (estado == "Validado") "✅" else "🎫"
-        tvBadge.text = "$emoji  $estado"
-        tvBadge.setBackgroundResource(
-            if (estado == "Validado") R.drawable.bg_badge_green
-            else R.drawable.bg_badge_red
-        )
+        // ACCIÓN DEL BOTÓN VALIDAR (Solo para el taquillero / control)
+        btnValidarEntrada.setOnClickListener {
+            val idUsuarioControl = SessionManager(this).getIdUsuario()
+            val exito = dbHelper.validarEntrada(codigoQR, idUsuarioControl)
 
-        tvDetalle.text = buildString {
-            if (pelicula.isNotEmpty()) appendLine("🎬  $pelicula")
-            if (sala.isNotEmpty())     appendLine("🎭  $sala")
-            if (butaca.isNotEmpty())   appendLine("💺  Butaca $butaca")
-            if (fecha.isNotEmpty())    appendLine("📅  $fecha")
-            appendLine()
-            appendLine("📌  Estado: $estado")
-            appendLine()
-            appendLine("🔑  Cód: $codigoQR")
-        }.trimEnd()
+            if (exito) {
+                Toast.makeText(this, "✅ Ingreso registrado exitosamente", Toast.LENGTH_LONG).show()
+
+                // Actualizar el diseño visualmente al instante
+                tvEstadoBadge.text   = "Validado"
+                tvEstadoDetalle.text = "⛔ ENTRADA YA UTILIZADA"
+                tvEstadoDetalle.setTextColor(Color.parseColor("#F44336"))
+                btnValidarEntrada.visibility = View.GONE
+            } else {
+                Toast.makeText(this, "Error al validar la entrada", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 }

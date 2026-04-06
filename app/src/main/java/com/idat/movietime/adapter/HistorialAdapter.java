@@ -1,10 +1,8 @@
-package com.idat.movietime.adapters;
+package com.idat.movietime.adapter;
 
-import android.graphics.Typeface;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -17,10 +15,24 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.TimeZone;
 import java.util.function.Consumer;
 
+/**
+ * HistorialAdapter
+ *
+ * FIX: antes mostraba "Compra" con "—" porque accedía a venta.entradas sin verificar
+ * que el JOIN de DatabaseHelper hubiera retornado datos. Ahora:
+ *  - tieneEntradas() / tieneConfiteria() son llamados correctamente.
+ *  - El formato de fecha usa TZ UTC → Lima.
+ *  - Si la venta tiene entradas, muestra título de película, fecha de función,
+ *    butaca y sala correctamente.
+ *  - Si es solo confitería, muestra los productos.
+ *  - El color del estado distingue Anulada (rojo) vs Completada (verde).
+ */
 public class HistorialAdapter extends RecyclerView.Adapter<HistorialAdapter.VH> {
-
+    private static final TimeZone TZ_UTC  = TimeZone.getTimeZone("UTC");
+    private static final TimeZone TZ_PERU = TimeZone.getTimeZone("America/Lima");
     private final List<VentaDetalle>     items;
     private final Consumer<VentaDetalle> onItemClick;
 
@@ -33,7 +45,7 @@ public class HistorialAdapter extends RecyclerView.Adapter<HistorialAdapter.VH> 
     @Override
     public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View v = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_historial_venta, parent, false);
+                .inflate(R.layout.item_historial_compra, parent, false);
         return new VH(v);
     }
 
@@ -41,132 +53,112 @@ public class HistorialAdapter extends RecyclerView.Adapter<HistorialAdapter.VH> 
     public void onBindViewHolder(@NonNull VH h, int position) {
         VentaDetalle v = items.get(position);
 
-        h.tvFechaVenta.setText(formatFecha(v.fechaVenta));
-
+        // ── Estado ───────────────────────────────────────────────────
         if ("Anulada".equals(v.estadoVenta)) {
-            h.tvEstadoVenta.setText("Anulada");
-            h.tvEstadoVenta.setBackgroundResource(R.drawable.bg_badge_red);
+            h.tvHistEstado.setText("Anulada");
+            h.tvHistEstado.setTextColor(0xFFF44336);
         } else {
-            h.tvEstadoVenta.setText("Pagada");
-            h.tvEstadoVenta.setBackgroundResource(R.drawable.bg_badge_green);
+            h.tvHistEstado.setText("Completada");
+            h.tvHistEstado.setTextColor(0xFF4CAF50);
         }
 
+        // ── Título: película o "Solo confitería" ──────────────────────
+        // FIX: tieneEntradas() verifica que la lista no esté vacía Y que el JOIN
+        //      haya devuelto datos reales (tituloPelicula != null).
         if (v.tieneEntradas()) {
-            h.layoutEntradas.setVisibility(View.VISIBLE);
-            h.containerEntradas.removeAllViews();
-
             VentaDetalle.EntradaItem primera = v.entradas.get(0);
 
-            TextView tvPelicula = new TextView(h.itemView.getContext());
-            tvPelicula.setTextSize(13f);
-            tvPelicula.setTextColor(0xFF111111);
-            tvPelicula.setTypeface(null, Typeface.BOLD);
-            tvPelicula.setPadding(0, 0, 0, 2);
-            tvPelicula.setText(primera.tituloPelicula);
-            h.containerEntradas.addView(tvPelicula);
+            // Título + formato
+            String titulo = primera.tituloPelicula != null ? primera.tituloPelicula : "Entrada";
+            if (primera.formato != null && !primera.formato.isEmpty())
+                titulo += "  (" + primera.formato + ")";
+            h.tvHistTitulo.setText(titulo);
 
-            String infoSala = primera.nombreSala + "  ·  Butaca " + primera.getButacaLabel()
-                    + "\n" + formatFechaFuncion(primera.fechaHoraFuncion);
-            TextView tvInfo = new TextView(h.itemView.getContext());
-            tvInfo.setTextSize(12f);
-            tvInfo.setTextColor(0xFF555555);
-            tvInfo.setPadding(0, 0, 0, 2);
-            tvInfo.setText(infoSala);
-            h.containerEntradas.addView(tvInfo);
+            // Fecha de función (no fecha de venta)
+            h.tvHistFecha.setText(formatFechaFuncion(primera.fechaHoraFuncion));
 
-            if (v.entradas.size() > 1) {
-                StringBuilder butacas = new StringBuilder("Butacas: ");
-                for (VentaDetalle.EntradaItem ei : v.entradas)
-                    butacas.append(ei.getButacaLabel()).append(", ");
-                butacas.setLength(butacas.length() - 2);
+            // Butaca + sala
+            String butacaInfo = "Butaca " + primera.getButacaLabel();
+            if (primera.nombreSala != null && !primera.nombreSala.isEmpty())
+                butacaInfo += "  ·  " + primera.nombreSala;
+            if (primera.tipoSala != null && !primera.tipoSala.isEmpty())
+                butacaInfo += "  (" + primera.tipoSala + ")";
+            if (v.entradas.size() > 1)
+                butacaInfo += "  ·  " + v.entradas.size() + " entradas";
+            h.tvHistButaca.setText(butacaInfo);
 
-                TextView tvBut = new TextView(h.itemView.getContext());
-                tvBut.setTextSize(12f);
-                tvBut.setTextColor(0xFF555555);
-                tvBut.setPadding(0, 0, 0, 2);
-                tvBut.setText(butacas.toString());
-                h.containerEntradas.addView(tvBut);
+        } else if (v.tieneConfiteria()) {
+            h.tvHistTitulo.setText("🍿  Confitería");
+            h.tvHistFecha.setText(formatFechaCorta(v.fechaVenta));
+
+            // Listar nombres de productos (máx. 2 + "y N más")
+            StringBuilder sb = new StringBuilder();
+            int max = Math.min(v.productosConfiteria.size(), 2);
+            for (int i = 0; i < max; i++) {
+                if (i > 0) sb.append(", ");
+                sb.append(v.productosConfiteria.get(i).nombreProducto);
             }
-
-            TextView tvCod = new TextView(h.itemView.getContext());
-            tvCod.setTextSize(11f);
-            tvCod.setTextColor(0xFF888888);
-            tvCod.setPadding(0, 0, 0, 8);
-            tvCod.setTypeface(Typeface.MONOSPACE);
-            tvCod.setText("Cód:  " + (primera.codigoQR != null ? primera.codigoQR : "—"));
-            h.containerEntradas.addView(tvCod);
+            if (v.productosConfiteria.size() > 2)
+                sb.append(" y ").append(v.productosConfiteria.size() - 2).append(" más");
+            h.tvHistButaca.setText(sb.toString());
 
         } else {
-            h.layoutEntradas.setVisibility(View.GONE);
+            h.tvHistTitulo.setText("Compra");
+            h.tvHistFecha.setText(formatFechaCorta(v.fechaVenta));
+            h.tvHistButaca.setText("—");
         }
 
-        if (v.tieneConfiteria()) {
-            h.layoutConfiteria.setVisibility(View.VISIBLE);
-            h.containerConfiteria.removeAllViews();
-            for (VentaDetalle.ConfiteriaItem item : v.productosConfiteria) {
-                TextView tv = new TextView(h.itemView.getContext());
-                tv.setTextSize(12f);
-                tv.setTextColor(0xFF444444);
-                tv.setPadding(0, 0, 0, 4);
-                tv.setText(item.cantidad + "x  " + item.nombreProducto
-                        + "   S/ " + String.format("%.2f", item.subtotal));
-                h.containerConfiteria.addView(tv);
-            }
-        } else {
-            h.layoutConfiteria.setVisibility(View.GONE);
-        }
+        // ── Método + comprobante ─────────────────────────────────────
+        String metodo = (v.metodoPago != null ? v.metodoPago : "—")
+                + "  ·  " + (v.tipoComprobante != null ? v.tipoComprobante : "—");
+        h.tvHistMetodo.setText(metodo);
 
-        h.tvMetodoPago.setText(v.metodoPago + "  ·  " + v.tipoComprobante);
-        h.tvCanalVenta.setText("Comprado el " + formatFechaCorta(v.fechaVenta));
-        h.tvTotalVenta.setText("S/ " + String.format("%.2f", v.total));
+        // ── Total ────────────────────────────────────────────────────
+        h.tvHistTotal.setText("S/ " + String.format("%.2f", v.total));
 
         h.itemView.setOnClickListener(view -> onItemClick.accept(v));
     }
 
     @Override
-    public int getItemCount() {
-        return items.size();
-    }
+    public int getItemCount() { return items.size(); }
 
     static class VH extends RecyclerView.ViewHolder {
-        TextView     tvFechaVenta, tvEstadoVenta, tvMetodoPago, tvCanalVenta, tvTotalVenta;
-        LinearLayout layoutEntradas, containerEntradas, layoutConfiteria, containerConfiteria;
+        TextView tvHistTitulo, tvHistEstado, tvHistFecha, tvHistButaca, tvHistMetodo, tvHistTotal;
 
         VH(@NonNull View v) {
             super(v);
-            tvFechaVenta        = v.findViewById(R.id.tvFechaVenta);
-            tvEstadoVenta       = v.findViewById(R.id.tvEstadoVenta);
-            layoutEntradas      = v.findViewById(R.id.layoutEntradas);
-            containerEntradas   = v.findViewById(R.id.containerEntradas);
-            layoutConfiteria    = v.findViewById(R.id.layoutConfiteria);
-            containerConfiteria = v.findViewById(R.id.containerConfiteria);
-            tvMetodoPago        = v.findViewById(R.id.tvMetodoPago);
-            tvCanalVenta        = v.findViewById(R.id.tvCanalVenta);
-            tvTotalVenta        = v.findViewById(R.id.tvTotalVenta);
+            tvHistTitulo = v.findViewById(R.id.tvHistTitulo);
+            tvHistEstado = v.findViewById(R.id.tvHistEstado);
+            tvHistFecha  = v.findViewById(R.id.tvHistFecha);
+            tvHistButaca = v.findViewById(R.id.tvHistButaca);
+            tvHistMetodo = v.findViewById(R.id.tvHistMetodo);
+            tvHistTotal  = v.findViewById(R.id.tvHistTotal);
         }
     }
 
-    private String formatFecha(String raw) {
-        if (raw == null) return "";
-        try {
-            Date d = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).parse(raw);
-            return new SimpleDateFormat("EEE dd MMM, yyyy  HH:mm", new Locale("es", "PE")).format(d);
-        } catch (Exception e) { return raw; }
-    }
-
+    /** Formatea "yyyy-MM-dd HH:mm:ss" (UTC) → "Lun 15 Mar  ·  08:30 PM" (Lima) */
     private String formatFechaFuncion(String raw) {
-        if (raw == null) return "";
+        if (raw == null || raw.isEmpty()) return "";
         try {
-            Date d = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).parse(raw);
-            return new SimpleDateFormat("EEE dd MMM, yyyy  hh:mm a", new Locale("es", "PE")).format(d);
+            SimpleDateFormat in = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+            in.setTimeZone(TZ_UTC);
+            SimpleDateFormat out = new SimpleDateFormat("EEE dd MMM  ·  hh:mm a", new Locale("es", "PE"));
+            out.setTimeZone(TZ_PERU);
+            Date d = in.parse(raw);
+            return out.format(d);
         } catch (Exception e) { return raw; }
     }
 
+    /** Formatea "yyyy-MM-dd HH:mm:ss" (UTC) → "15/03/2025  08:30" (Lima) */
     private String formatFechaCorta(String raw) {
-        if (raw == null) return "";
+        if (raw == null || raw.isEmpty()) return "";
         try {
-            Date d = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).parse(raw);
-            return new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(d);
+            SimpleDateFormat in = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+            in.setTimeZone(TZ_UTC);
+            SimpleDateFormat out = new SimpleDateFormat("dd/MM/yyyy  HH:mm", new Locale("es", "PE"));
+            out.setTimeZone(TZ_PERU);
+            Date d = in.parse(raw);
+            return out.format(d);
         } catch (Exception e) { return raw; }
     }
 }

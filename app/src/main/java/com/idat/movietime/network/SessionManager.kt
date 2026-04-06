@@ -17,13 +17,12 @@ class SessionManager(context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-
     fun guardarSesion(
-        token:      String,
-        idUsuario:  Int,
-        nombres:    String,
-        rol:        String,
-        email:      String
+        token:     String,
+        idUsuario: Int,
+        nombres:   String,
+        rol:       String,
+        email:     String
     ) {
         prefs.edit()
             .putString(KEY_TOKEN,      token)
@@ -34,16 +33,13 @@ class SessionManager(context: Context) {
             .apply()
     }
 
-
     fun getToken():     String? = prefs.getString(KEY_TOKEN, null)
     fun getIdUsuario(): Int     = prefs.getInt(KEY_ID_USUARIO, -1)
     fun getNombres():   String? = prefs.getString(KEY_NOMBRES, null)
     fun getRol():       String? = prefs.getString(KEY_ROL, null)
     fun getEmail():     String? = prefs.getString(KEY_EMAIL, null)
 
-
     fun isLoggedIn(): Boolean = !getToken().isNullOrEmpty()
-
 
     fun cerrarSesion() {
         prefs.edit().clear().apply()

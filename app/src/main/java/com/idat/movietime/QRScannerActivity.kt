@@ -103,15 +103,14 @@ class QRScannerActivity : AppCompatActivity() {
 
         if (partes.size >= 7 && partes[0] == "MOVIETIME") {
             val codigoQR = partes[1]
-            val pelicula = partes[2]
-            val sala     = partes[3]
-            val butaca   = partes[4]
-            val fecha    = partes[5]
-            val estado   = partes[6]
+            val pelicula = partes.getOrElse(2) { "" }
+            val sala     = partes.getOrElse(3) { "" }
+            val butaca   = partes.getOrElse(4) { "" }
+            val fecha    = partes.getOrElse(5) { "" }
+            val estado   = partes.getOrElse(6) { "Pendiente" }
 
-            val db     = DatabaseHelper(this)
+            val db      = DatabaseHelper(this)
             val idVenta = db.getIdVentaPorCodigoQR(codigoQR)
-            db.close()
 
             intent.putExtra("qr_invalido", false)
             intent.putExtra("codigo_qr",   codigoQR)

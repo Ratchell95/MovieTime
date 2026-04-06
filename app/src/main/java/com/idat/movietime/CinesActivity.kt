@@ -13,6 +13,7 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -80,7 +81,9 @@ class CinesActivity : AppCompatActivity() {
         findViewById<View>(R.id.navHistorial)?.setOnClickListener   { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, HistorialActivity::class.java)) }
         findViewById<View>(R.id.navQR)?.setOnClickListener         { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, QRScannerActivity::class.java)) }
         findViewById<View>(R.id.navCerrarSesion)?.setOnClickListener {
-            drawerLayout.closeDrawer(Gravity.START)
+            drawerLayout.closeDrawer(GravityCompat.START)
+
+            com.idat.movietime.network.SessionManager(this).cerrarSesion()
             startActivity(Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             })

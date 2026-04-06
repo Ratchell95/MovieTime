@@ -2,128 +2,105 @@ package com.idat.movietime.network
 
 import com.idat.movietime.model.LoginRequest
 import com.idat.movietime.model.LoginResponse
-import com.idat.movietime.model.Pelicula
-import com.idat.movietime.model.Funcion
-import com.idat.movietime.model.Butaca
-import com.idat.movietime.model.Venta
-import com.idat.movietime.model.Producto
-import com.idat.movietime.model.Promocion
 import retrofit2.Response
-import retrofit2.http.Body
-import retrofit2.http.DELETE
-import retrofit2.http.GET
-import retrofit2.http.POST
-import retrofit2.http.PUT
-import retrofit2.http.Path
-import retrofit2.http.Query
+import retrofit2.http.*
+import com.idat.movietime.model.Pelicula
 
 interface MovieTimeApi {
 
+    // FIX: el backend devuelve ApiResponse<LoginResponse> (con wrapper success/message/data),
+    //      no LoginResponse directamente. Sin este cambio Gson mapea todo a null.
     @POST("auth/login")
-    suspend fun login(
-        @Body request: LoginRequest
-    ): Response<LoginResponse>
+    suspend fun login(@Body body: LoginRequest): Response<ApiResponse<LoginResponse>>
 
     @POST("auth/logout")
-    suspend fun logout(): Response<Unit>
+    suspend fun logout(): Response<Map<String, String>>
 
     @GET("peliculas")
-    suspend fun getPeliculas(): Response<List<Pelicula>>
+    suspend fun getPeliculas(): Response<ApiResponse<List<Pelicula>>>
 
     @GET("peliculas/cartelera")
-    suspend fun getPeliculasCartelera(): Response<List<Pelicula>>
+    suspend fun getCartelera(): Response<ApiResponse<List<Pelicula>>>
 
     @GET("peliculas/proximamente")
-    suspend fun getPeliculasProximamente(): Response<List<Pelicula>>
+    suspend fun getProximamente(): Response<ApiResponse<List<Pelicula>>>
 
     @GET("peliculas/{id}")
-    suspend fun getPeliculaById(
-        @Path("id") id: Int
-    ): Response<Pelicula>
+    suspend fun getPeliculaById(@Path("id") id: Int): Response<Map<String, Any>>
 
     @POST("peliculas")
-    suspend fun crearPelicula(
-        @Body pelicula: Pelicula
-    ): Response<Pelicula>
+    suspend fun crearPelicula(@Body pelicula: Map<String, Any>): Response<Map<String, Any>>
 
     @PUT("peliculas/{id}")
     suspend fun actualizarPelicula(
         @Path("id") id: Int,
-        @Body pelicula: Pelicula
-    ): Response<Pelicula>
-
-    @DELETE("peliculas/{id}")
-    suspend fun eliminarPelicula(
-        @Path("id") id: Int
-    ): Response<Unit>
-
-    @GET("funciones")
-    suspend fun getFunciones(): Response<List<Funcion>>
-
-    @GET("funciones/pelicula/{idPelicula}")
-    suspend fun getFuncionesByPelicula(
-        @Path("idPelicula") idPelicula: Int
-    ): Response<List<Funcion>>
-
-    @GET("funciones/{id}/butacas")
-    suspend fun getButacasByFuncion(
-        @Path("id") idFuncion: Int
-    ): Response<List<Butaca>>
-
-
-    @POST("ventas")
-    suspend fun crearVenta(
-        @Body venta: Venta
-    ): Response<Venta>
-
-    @GET("ventas/cliente/{idCliente}")
-    suspend fun getVentasByCliente(
-        @Path("idCliente") idCliente: Int
-    ): Response<List<Venta>>
-
-    @GET("ventas/{id}")
-    suspend fun getVentaById(
-        @Path("id") id: Int
-    ): Response<Venta>
-
-    @POST("qr/validar")
-    suspend fun validarQR(
-        @Body body: Map<String, String>
+        @Body datos: Map<String, Any>
     ): Response<Map<String, Any>>
 
-    @GET("productos")
-    suspend fun getProductos(): Response<List<Producto>>
+    @DELETE("peliculas/{id}")
+    suspend fun eliminarPelicula(@Path("id") id: Int): Response<Void>
+
+    @GET("funciones/publico/hoy")
+    suspend fun getFuncionesHoy(): Response<ApiResponse<List<Map<String, Any>>>>
+
+    @GET("funciones/publico/fecha/{fecha}")
+    suspend fun getFuncionesByFecha(
+        @Path("fecha") fecha: String
+    ): Response<ApiResponse<List<Map<String, Any>>>>
+
+    @GET("funciones/pelicula/{peliculaId}")
+    suspend fun getFuncionesByPelicula(
+        @Path("peliculaId") peliculaId: Long
+    ): Response<ApiResponse<List<Map<String, Any>>>>
+
+    @POST("funciones")
+    suspend fun crearFuncion(@Body body: Map<String, Any>): Response<ApiResponse<Map<String, Any>>>
+
+    @PATCH("funciones/{id}/estado")
+    suspend fun cambiarEstadoFuncion(
+        @Path("id") id: Long,
+        @Body body: Map<String, String>
+    ): Response<ApiResponse<Map<String, Any>>>
+
+    @GET("ordenes/cliente/{clienteId}")
+    suspend fun getOrdenesByCliente(
+        @Path("clienteId") clienteId: Long
+    ): Response<ApiResponse<List<Map<String, Any>>>>
+
+    @GET("ordenes/hoy")
+    suspend fun getVentasHoy(): Response<ApiResponse<Map<String, Any>>>
+
+    @GET("ordenes/{numero}")
+    suspend fun getOrdenByNumero(
+        @Path("numero") numero: String
+    ): Response<ApiResponse<Map<String, Any>>>
+
+    @POST("ordenes")
+    suspend fun crearOrden(@Body body: Map<String, Any>): Response<ApiResponse<Map<String, Any>>>
+
+    @GET("productos/activos")
+    suspend fun getProductosActivos(): Response<ApiResponse<List<Map<String, Any>>>>
 
     @GET("productos/{id}")
     suspend fun getProductoById(
-        @Path("id") id: Int
-    ): Response<Producto>
+        @Path("id") id: Long
+    ): Response<ApiResponse<Map<String, Any>>>
 
-    @POST("productos")
-    suspend fun crearProducto(
-        @Body producto: Producto
-    ): Response<Producto>
-
-    @PUT("productos/{id}")
-    suspend fun actualizarProducto(
-        @Path("id") id: Int,
-        @Body producto: Producto
-    ): Response<Producto>
-
-    @GET("promociones/activas")
-    suspend fun getPromocionesActivas(): Response<List<Promocion>>
-
-    @GET("promociones/{id}")
-    suspend fun getPromocionById(
-        @Path("id") id: Int
-    ): Response<Promocion>
+    @GET("productos")
+    suspend fun getProductosConfiteria(): Response<ApiResponse<List<com.idat.movietime.ProductoWeb>>>
 
 
-    @GET("reportes")
-    suspend fun getReportes(
-        @Query("fechaInicio")   fechaInicio: String,
-        @Query("fechaFin")      fechaFin: String,
-        @Query("tipoReporte")   tipoReporte: String,
-        @Query("formatoExport") formato: String
-    ): Response<ByteArray>
+    @GET("productos/categorias")
+    suspend fun getCategorias(): Response<ApiResponse<List<Map<String, Any>>>>
+
+    @POST("checkin/validar")
+    suspend fun validarCheckin(@Body body: Map<String, Any>): Response<ApiResponse<Map<String, Any>>>
+
+    @GET("checkin/log/hoy")
+    suspend fun getCheckinLogHoy(): Response<ApiResponse<List<Map<String, Any>>>>
+
+    @GET("checkin/funcion/{funcionId}")
+    suspend fun getCheckinByFuncion(
+        @Path("funcionId") funcionId: Long
+    ): Response<ApiResponse<List<Map<String, Any>>>>
 }

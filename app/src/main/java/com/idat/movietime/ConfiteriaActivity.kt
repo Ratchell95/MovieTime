@@ -13,18 +13,23 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import com.idat.movietime.network.RetrofitClient
 
+
+// Este modelo leerá la información que viene de tu Spring Boot
 data class ProductoItem(
     val id:        Int,
     val nombre:    String,
-    val precio:    Double,
+    var precio:    Double,
     val imagenRes: Int,
     var cantidad:  Int = 0
 )
-
 class ConfiteriaActivity : AppCompatActivity() {
 
     private lateinit var recyclerProductos: RecyclerView
@@ -98,7 +103,7 @@ class ConfiteriaActivity : AppCompatActivity() {
         setupCategorias()
         setupDrawer()
         actualizarTotal()
-
+        descargarPreciosReales()
         btnSiguiente.setOnClickListener {
             val totalConf = todosProductos().sumOf { it.precio * it.cantidad }
             val granTotal = totalEntradas + totalConf
@@ -131,6 +136,7 @@ class ConfiteriaActivity : AppCompatActivity() {
         )
         btnSiguiente.isEnabled = true
     }
+
     private fun setupCategorias() {
         val catMap = mapOf(
             R.id.catPopcorn  to listaPopcorn,
@@ -153,19 +159,65 @@ class ConfiteriaActivity : AppCompatActivity() {
 
     private fun setupDrawer() {
         findViewById<ImageButton>(R.id.btnMenu)?.setOnClickListener {
-            if (drawerLayout.isDrawerOpen(Gravity.START)) drawerLayout.closeDrawer(Gravity.START)
-            else drawerLayout.openDrawer(Gravity.START)
+            if (drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.closeDrawer(GravityCompat.START)
+            else drawerLayout.openDrawer(GravityCompat.START)
         }
-        findViewById<View>(R.id.navCartelera)?.setOnClickListener   { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, PeliculasActivity::class.java)) }
-        findViewById<View>(R.id.navEntradas)?.setOnClickListener    { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, HistorialActivity::class.java)) }
-        findViewById<View>(R.id.navConfiteria)?.setOnClickListener  { drawerLayout.closeDrawer(Gravity.START) }
-        findViewById<View>(R.id.navHistorial)?.setOnClickListener   { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, HistorialActivity::class.java)) }
-        findViewById<View>(R.id.navQR)?.setOnClickListener         { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, QRScannerActivity::class.java)) }
+        findViewById<View>(R.id.navCartelera)?.setOnClickListener   { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, PeliculasActivity::class.java)) }
+        findViewById<View>(R.id.navEntradas)?.setOnClickListener    { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, HistorialActivity::class.java)) }
+        findViewById<View>(R.id.navConfiteria)?.setOnClickListener  { drawerLayout.closeDrawer(GravityCompat.START) }
+        findViewById<View>(R.id.navHistorial)?.setOnClickListener   { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, HistorialActivity::class.java)) }
+        findViewById<View>(R.id.navQR)?.setOnClickListener         { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, QRScannerActivity::class.java)) }
         findViewById<View>(R.id.navCerrarSesion)?.setOnClickListener {
-            drawerLayout.closeDrawer(Gravity.START)
+            drawerLayout.closeDrawer(GravityCompat.START)
+
+            com.idat.movietime.network.SessionManager(this).cerrarSesion()
+
             startActivity(Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             })
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // LA MAGIA: DESCARGAR PRECIOS EN TIEMPO REAL DESDE MYSQL
+    // ──────────────────────────────────────────────────────────────
+    private fun descargarPreciosReales() {
+        lifecycleScope.launch {
+            try {
+                // 1. Usamos la ruta que YA EXISTÍA en tu MovieTimeApi.kt
+                val response = RetrofitClient.api.getProductosActivos()
+
+                if (response.isSuccessful && response.body()?.success == true) {
+
+                    // Kotlin entiende esto perfectamente porque es un Map nativo
+                    val listaMapas = response.body()?.data
+
+                    if (listaMapas != null) {
+                        for (mapa in listaMapas) {
+                            // Extraemos los datos (Retrofit convierte los JSON numbers a Double)
+                            val idDouble = (mapa["idProducto"] ?: mapa["id_producto"]) as? Double
+                            val precioNuevo = mapa["precio"] as? Double
+
+                            if (idDouble != null && precioNuevo != null) {
+                                val id = idDouble.toInt()
+
+                                // Buscamos en tus listas locales y actualizamos
+                                val itemLocal = todosProductos().find { it.id == id }
+                                if (itemLocal != null) {
+                                    itemLocal.precio = precioNuevo
+                                }
+                            }
+                        }
+
+                        // 3. Refrescamos la pantalla
+                        adapter.notifyDataSetChanged()
+                        actualizarTotal()
+                    }
+                }
+            } catch (e: Exception) {
+                // Si falla el internet, se mantienen los precios de emergencia
+                e.printStackTrace()
+            }
         }
     }
 

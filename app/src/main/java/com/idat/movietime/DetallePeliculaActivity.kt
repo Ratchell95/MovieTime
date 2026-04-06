@@ -37,6 +37,9 @@ class DetallePeliculaActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_detalle_pelicula)
 
+        findViewById<TextView>(R.id.btnAtras).setOnClickListener {
+            finish()
+        }
         val idPelicula  = intent.getIntExtra("id_pelicula", 0)
         val titulo      = intent.getStringExtra("titulo")        ?: ""
         val duracion    = intent.getIntExtra("duracion_min",     0)

@@ -46,6 +46,7 @@ class AsientosActivity : AppCompatActivity() {
     private lateinit var recyclerAsientos:  RecyclerView
     private lateinit var btnContinuar:      Button
     private lateinit var seatAdapter:       AsientoAdapter
+    private lateinit var ivPosterAsiento:   ImageView
 
     private val butacasSeleccionadas = mutableListOf<String>()
     private var timer: CountDownTimer? = null
@@ -59,19 +60,7 @@ class AsientosActivity : AppCompatActivity() {
     private var salaExtra       = ""
     private var fechaExtra      = ""
     private var drawableResExtra = 0
-    private var idFuncionExtra   = 0   // para bloqueo SQLite de butacas
-
-    // ✅ Mismo mapa que DetallePeliculaActivity y PeliculasAdapter
-    private val drawableMap = mapOf(
-        1 to R.drawable.ic_pelicula1,
-        2 to R.drawable.ic_pelicula2,
-        3 to R.drawable.ic_pelicula3,
-        4 to R.drawable.ic_pelicula4,
-        5 to R.drawable.ic_pelicula5,
-        6 to R.drawable.ic_pelicula6,
-        7 to R.drawable.ic_pelicula7,
-        8 to R.drawable.ic_pelicula8
-    )
+    private var idFuncionExtra   = 0
 
     private val filas = listOf("M","L","K","J","I","H","G","F","E","D","C","B","A")
     private val colsPorFila = mapOf(
@@ -83,6 +72,8 @@ class AsientosActivity : AppCompatActivity() {
         "C" to (1..9).toList(),  "B" to (1..7).toList(),
         "A" to (1..5).toList()
     )
+
+    // Asientos ocupados permanentemente para pruebas
     private val ocupadas  = setOf("K8","K9","E4","E5","M13","M14")
     private val GRID_COLS = 18
 
@@ -90,6 +81,7 @@ class AsientosActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_asientos)
 
+        // Vincular vistas
         tvTituloAsiento   = findViewById(R.id.tvTituloAsiento)
         tvDuracionAsiento = findViewById(R.id.tvDuracionAsiento)
         tvSedeAsiento     = findViewById(R.id.tvSedeAsiento)
@@ -100,7 +92,9 @@ class AsientosActivity : AppCompatActivity() {
         tvSeleccionadas   = findViewById(R.id.tvSeleccionadas)
         recyclerAsientos  = findViewById(R.id.recyclerAsientos)
         btnContinuar      = findViewById(R.id.btnContinuar)
+        ivPosterAsiento   = findViewById(R.id.ivPosterAsiento)
 
+        // Recuperar extras
         idPeliculaExtra  = intent.getIntExtra("id_pelicula",   0)
         tituloExtra      = intent.getStringExtra("titulo")        ?: ""
         duracionExtra    = intent.getIntExtra("duracion_min",    0)
@@ -112,9 +106,11 @@ class AsientosActivity : AppCompatActivity() {
         drawableResExtra = intent.getIntExtra("drawable_res",    0)
         idFuncionExtra   = intent.getIntExtra("id_funcion",      0)
 
-        // ── Butacas bloqueadas en BD (misma función/día) ─────────────
-        val bloqueadasBD: Set<String> = emptySet()
+        val dbHelper = DatabaseHelper(this)
+        val bloqueadasBD = dbHelper.getButacasBloqueadasActivas(idFuncionExtra)
+        val compradasBD = dbHelper.getButacasOcupadasPermanentes(idFuncionExtra)
 
+        // Poblar info
         tvTituloAsiento.text   = "$tituloExtra (DOB)"
         tvDuracionAsiento.text = "${duracionExtra/60} hr ${duracionExtra%60} min | $clasificExtra"
         tvSedeAsiento.text     = sedeExtra
@@ -122,26 +118,23 @@ class AsientosActivity : AppCompatActivity() {
         tvHoraAsiento.text     = horaExtra
         tvSalaAsiento.text     = salaExtra
 
-        // ✅ Cargar imagen del póster de la película
-        val ivPoster = findViewById<ImageView>(R.id.ivPosterAsiento)
-        val resImg = when {
-            drawableResExtra != 0              -> drawableResExtra
-            drawableMap[idPeliculaExtra] != null -> drawableMap[idPeliculaExtra]!!
-            else                               -> 0
-        }
-        if (resImg != 0) {
-            ivPoster?.setImageResource(resImg)
-            ivPoster?.scaleType = ImageView.ScaleType.CENTER_CROP
-        }
-
         findViewById<TextView>(R.id.btnAtras)?.setOnClickListener { finish() }
-
+        if (drawableResExtra != 0) {
+            ivPosterAsiento.setImageResource(drawableResExtra)
+        } else {
+            // Si por alguna razón no llega, le pones un placeholder
+            ivPosterAsiento.setImageResource(R.drawable.ic_pelicula_placeholder) // Asegúrate de tener esta imagen o usa mipmap/ic_launcher
+        }
         iniciarCronometro()
-        setupAsientos(bloqueadasBD)
+
+        setupAsientos(bloqueadasBD, compradasBD)
 
         btnContinuar.setOnClickListener {
+            // ✅ REGISTRAR BLOQUEO TEMPORAL EN LA BD ANTES DE SALIR
+            dbHelper.bloquearButacasTemporales(butacasSeleccionadas, idFuncionExtra)
+
             timer?.cancel()
-            startActivity(Intent(this, EntradaActivity::class.java).apply {
+            val intent = Intent(this, EntradaActivity::class.java).apply {
                 putExtra("butacas",           butacasSeleccionadas.joinToString(", "))
                 putExtra("cantidad_entradas", butacasSeleccionadas.size)
                 putExtra("titulo",            tituloExtra)
@@ -154,30 +147,39 @@ class AsientosActivity : AppCompatActivity() {
                 putExtra("drawable_res",      drawableResExtra)
                 putExtra("id_pelicula",       idPeliculaExtra)
                 putExtra("id_funcion",        idFuncionExtra)
-            })
+            }
+            startActivity(intent)
         }
     }
 
-    private fun setupAsientos(bloqueadasBD: Set<String> = emptySet()) {
-        val todasOcupadas = ocupadas + bloqueadasBD  // hardcode + BD
+    private fun setupAsientos(bloqueadasBD: Set<String>, compradasBD: Set<String>) {
+        // Sumamos: Las de prueba + las temporales + LAS COMPRADAS REALES
+        val todasOcupadas = ocupadas + bloqueadasBD + compradasBD
         val maxAsientos = 17
         val celdas = mutableListOf<AsientoCelda>()
+
+        // Encabezado números
         celdas.add(AsientoCelda("", 0, AsientoTipo.ESPACIO))
         for (n in 1..maxAsientos)
             celdas.add(AsientoCelda("", n, AsientoTipo.NUMERO_COL, label = n.toString()))
+
+        // Filas de asientos
         for (fila in filas) {
             val cols        = colsPorFila[fila] ?: emptyList()
             val espaciosIzq = (maxAsientos - cols.size) / 2
             val espaciosDer = maxAsientos - cols.size - espaciosIzq
+
             celdas.add(AsientoCelda(fila, 0, AsientoTipo.ETIQUETA_FILA, label = fila))
             repeat(espaciosIzq) { celdas.add(AsientoCelda(fila, 0, AsientoTipo.ESPACIO)) }
+
             for (col in cols) {
                 val codigo = "$fila$col"
-                celdas.add(AsientoCelda(fila, col,
-                    if (todasOcupadas.contains(codigo)) AsientoTipo.OCUPADA else AsientoTipo.LIBRE))
+                val tipo = if (todasOcupadas.contains(codigo)) AsientoTipo.OCUPADA else AsientoTipo.LIBRE
+                celdas.add(AsientoCelda(fila, col, tipo))
             }
             repeat(espaciosDer) { celdas.add(AsientoCelda(fila, 0, AsientoTipo.ESPACIO)) }
         }
+
         seatAdapter = AsientoAdapter(celdas) { fila, col, seleccionada ->
             val codigo = "$fila$col"
             if (seleccionada) butacasSeleccionadas.add(codigo)
@@ -199,17 +201,15 @@ class AsientosActivity : AppCompatActivity() {
     }
 
     private fun iniciarCronometro() {
-        tvCronometro.visibility = android.view.View.VISIBLE
-        timer = object : CountDownTimer(10 * 60 * 1000L, 1000) {
+        timer?.cancel()
+        // ✅ CRONÓMETRO EXACTO DE 1 MINUTO (60,000 ms)
+        timer = object : CountDownTimer(60000L, 1000) {
             override fun onTick(ms: Long) {
-                val m = ms / 60000; val s = (ms % 60000) / 1000
-                tvCronometro.text = "⏱ %02d:%02d".format(m, s)
+                val s = ms / 1000
+                tvCronometro.text = "⏱ Expira en: 00:%02d".format(s)
             }
             override fun onFinish() {
-                Toast.makeText(this@AsientosActivity, "⏱ Tiempo agotado — los asientos se liberaron", Toast.LENGTH_LONG).show()
-                startActivity(Intent(this@AsientosActivity, PeliculasActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                })
+                Toast.makeText(this@AsientosActivity, "⏱ Tiempo agotado", Toast.LENGTH_LONG).show()
                 finish()
             }
         }.start()
@@ -226,43 +226,40 @@ class AsientosActivity : AppCompatActivity() {
 
     inner class AsientoAdapter(
         private val celdas: List<AsientoCelda>,
-        private val onSel:  (String, Int, Boolean) -> Unit
+        private val onSel: (String, Int, Boolean) -> Unit
     ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
         private val seleccionadas = mutableSetOf<String>()
         private var tooltipPos = -1
 
         inner class AsientoVH(v: View) : RecyclerView.ViewHolder(v) {
-            val viewAsiento: View     = v.findViewById(R.id.viewAsiento)
-            val tvAsiento:   TextView = v.findViewById(R.id.tvAsiento)
+            val viewAsiento: View = v.findViewById(R.id.viewAsiento)
+            val tvAsiento: TextView = v.findViewById(R.id.tvAsiento)
         }
         inner class EtiquetaVH(tv: TextView) : RecyclerView.ViewHolder(tv) { val label = tv }
-        inner class EspacioVH(v: View) : RecyclerView.ViewHolder(v)
 
         override fun getItemViewType(pos: Int) = when (celdas[pos].tipo) {
             AsientoTipo.LIBRE, AsientoTipo.OCUPADA -> VT_ASIENTO
-            AsientoTipo.ESPACIO                    -> VT_ESPACIO
-            AsientoTipo.ETIQUETA_FILA              -> VT_ETIQUETA
-            AsientoTipo.NUMERO_COL                 -> VT_NUM_COL
+            AsientoTipo.ESPACIO -> VT_ESPACIO
+            AsientoTipo.ETIQUETA_FILA -> VT_ETIQUETA
+            AsientoTipo.NUMERO_COL -> VT_NUM_COL
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, vt: Int): RecyclerView.ViewHolder {
             return when (vt) {
-                VT_ASIENTO -> AsientoVH(LayoutInflater.from(parent.context)
-                    .inflate(R.layout.item_asiento, parent, false))
+                VT_ASIENTO -> AsientoVH(LayoutInflater.from(parent.context).inflate(R.layout.item_asiento, parent, false))
                 VT_ETIQUETA, VT_NUM_COL -> {
                     val tv = TextView(parent.context).apply {
                         val size = (24 * resources.displayMetrics.density).toInt()
                         layoutParams = RecyclerView.LayoutParams(size, size)
-                        gravity = Gravity.CENTER; textSize = 7f
-                        setTextColor(Color.parseColor("#777777"))
+                        gravity = Gravity.CENTER; textSize = 7f; setTextColor(Color.GRAY)
                     }
                     EtiquetaVH(tv)
                 }
-                else -> EspacioVH(View(parent.context).apply {
+                else -> object : RecyclerView.ViewHolder(View(parent.context).apply {
                     val size = (24 * resources.displayMetrics.density).toInt()
                     layoutParams = RecyclerView.LayoutParams(size, size)
-                })
+                }) {}
             }
         }
 
@@ -270,33 +267,27 @@ class AsientosActivity : AppCompatActivity() {
             val c = celdas[pos]
             when (holder) {
                 is EtiquetaVH -> holder.label.text = c.label
-                is AsientoVH  -> bindAsiento(holder, c, pos)
-            }
-        }
+                is AsientoVH -> {
+                    val codigo = "${c.fila}${c.col}"
+                    holder.tvAsiento.text = if (tooltipPos == pos) codigo else ""
 
-        private fun bindAsiento(holder: AsientoVH, c: AsientoCelda, pos: Int) {
-            val codigo = "${c.fila}${c.col}"
-            holder.itemView.setOnClickListener(null)
-            holder.itemView.isClickable = true
-            holder.tvAsiento.text = if (tooltipPos == pos) codigo else ""
-            holder.tvAsiento.setTextColor(Color.WHITE)
-            when {
-                c.tipo == AsientoTipo.OCUPADA -> {
-                    holder.viewAsiento.background = circleDrawable("#BBBBBB")
-                    holder.itemView.isClickable   = false
-                }
-                seleccionadas.contains(codigo) -> {
-                    holder.viewAsiento.background = circleDrawable("#4CAF50")
-                    holder.itemView.setOnClickListener {
-                        tooltipPos = if (tooltipPos == holder.adapterPosition) -1 else holder.adapterPosition
-                        seleccionadas.remove(codigo); onSel(c.fila, c.col, false); notifyDataSetChanged()
-                    }
-                }
-                else -> {
-                    holder.viewAsiento.background = circleDrawable("#E8E8E8", "#CCCCCC")
-                    holder.itemView.setOnClickListener {
-                        tooltipPos = if (tooltipPos == holder.adapterPosition) -1 else holder.adapterPosition
-                        seleccionadas.add(codigo); onSel(c.fila, c.col, true); notifyDataSetChanged()
+                    when {
+                        c.tipo == AsientoTipo.OCUPADA -> {
+                            holder.viewAsiento.background = circleDrawable("#BBBBBB")
+                            holder.itemView.setOnClickListener(null)
+                        }
+                        seleccionadas.contains(codigo) -> {
+                            holder.viewAsiento.background = circleDrawable("#4CAF50")
+                            holder.itemView.setOnClickListener {
+                                seleccionadas.remove(codigo); onSel(c.fila, c.col, false); notifyDataSetChanged()
+                            }
+                        }
+                        else -> {
+                            holder.viewAsiento.background = circleDrawable("#E8E8E8", "#CCCCCC")
+                            holder.itemView.setOnClickListener {
+                                seleccionadas.add(codigo); onSel(c.fila, c.col, true); notifyDataSetChanged()
+                            }
+                        }
                     }
                 }
             }

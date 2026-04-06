@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginVertical="8dp"
+    app:cardBackgroundColor="#161624"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="6dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <LinearLayout
+            android:id="@+id/btnVerQR"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="#0A0A14"
+            android:gravity="center"
+            android:orientation="vertical"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/separadorTicket"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_drawer_qr"
+                app:tint="#4FC3F7" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Tocar para\nver QR"
+                android:textAlignment="center"
+                android:textColor="#888888"
+                android:textSize="10sp"
+                android:textStyle="bold"/>
+        </LinearLayout>
+        <ImageView
+            android:id="@+id/ivPosterEntrada"
+            android:layout_width="85dp"
+            android:layout_height="125dp"
+            android:scaleType="centerCrop"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/tvEntradaPelicula"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="12dp"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:text="TÍTULO DE LA PELÍCULA"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toStartOf="@+id/separadorTicket"
+            app:layout_constraintStart_toEndOf="@+id/ivPosterEntrada"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/tvEntradaFecha"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="15 Mar 2026 - 08:30 PM"
+            android:textColor="#4FC3F7"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="@+id/tvEntradaPelicula"
+            app:layout_constraintStart_toStartOf="@+id/tvEntradaPelicula"
+            app:layout_constraintTop_toBottomOf="@+id/tvEntradaPelicula" />
+
+        <TextView
+            android:id="@+id/tvEntradaButaca"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Sala 05 | Butacas: J8, J9"
+            android:textColor="#B0BEC5"
+            android:textSize="12sp"
+            app:layout_constraintEnd_toEndOf="@+id/tvEntradaPelicula"
+            app:layout_constraintStart_toStartOf="@+id/tvEntradaPelicula"
+            app:layout_constraintTop_toBottomOf="@+id/tvEntradaFecha" />
+
+        <TextView
+            android:id="@+id/tvEntradaEstado"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="16dp"
+            android:text="● Pendiente"
+            android:textColor="#FFA726"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="@+id/tvEntradaPelicula"
+            app:layout_constraintTop_toBottomOf="@+id/tvEntradaButaca"
+            app:layout_constraintVertical_bias="1.0" />
+
+        <View
+            android:id="@+id/separadorTicket"
+            android:layout_width="1dp"
+            android:layout_height="0dp"
+            android:layout_marginVertical="12dp"
+            android:layout_marginEnd="65dp"
+            android:background="#33FFFFFF"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="#0A0A14"
+            android:gravity="center"
+            android:orientation="vertical"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/separadorTicket"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_drawer_qr"
+                app:tint="#4FC3F7" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Tocar para\nver QR"
+                android:textAlignment="center"
+                android:textColor="#888888"
+                android:textSize="10sp"
+                android:textStyle="bold"/>
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.cardview.widget.CardView>

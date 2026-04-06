@@ -1,122 +1,103 @@
 package com.idat.movietime
 
 import android.content.Intent
-import android.database.sqlite.SQLiteDatabase
 import android.os.Bundle
 import android.view.View
+import androidx.core.view.GravityCompat
+import android.widget.ImageButton
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.idat.movietime.adapters.HistorialAdapter
+import com.idat.movietime.adapter.HistorialAdapter
 import com.idat.movietime.db.DatabaseHelper
-import com.idat.movietime.model.VentaDetalle
-import com.idat.movietime.model.VentaDetalle.EntradaItem
 import com.idat.movietime.network.SessionManager
 
 class HistorialActivity : AppCompatActivity() {
 
     private lateinit var recyclerHistorial: RecyclerView
     private lateinit var tvHistorialVacio: TextView
-    private var dbHelper: DatabaseHelper? = null
+    private lateinit var drawerLayout: DrawerLayout
+    // FIX: inicializar como lateinit, igual que DetalleCompraActivity
+    private lateinit var dbHelper: DatabaseHelper
     private var idClienteActual = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_historial)
 
+        // FIX: inicializar en onCreate, nunca dentro de un Thread
+        dbHelper = DatabaseHelper(this)
+
         recyclerHistorial = findViewById(R.id.recyclerHistorial)
         tvHistorialVacio  = findViewById(R.id.tvHistorialVacio)
+        drawerLayout      = findViewById(R.id.drawerLayout)
         recyclerHistorial.layoutManager = LinearLayoutManager(this)
 
         findViewById<View>(R.id.btnAtras)?.setOnClickListener { finish() }
+        findViewById<ImageButton>(R.id.btnMenu)?.setOnClickListener {
+            if (drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.closeDrawer(GravityCompat.START)
+            else drawerLayout.openDrawer(GravityCompat.START)
+        }
 
+        setupDrawer()
         idClienteActual = SessionManager(this).getIdUsuario()
-
         cargarHistorial()
     }
 
-    private fun cargarHistorial() {
-        dbHelper = DatabaseHelper(this)
-        val lista: List<VentaDetalle> = obtenerVentasCliente(idClienteActual)
-
-        if (lista.isEmpty()) {
-            tvHistorialVacio.visibility  = View.VISIBLE
-            recyclerHistorial.visibility = View.GONE
-        } else {
-            tvHistorialVacio.visibility  = View.GONE
-            recyclerHistorial.visibility = View.VISIBLE
-            recyclerHistorial.adapter = HistorialAdapter(lista) { venta ->
-                val intent = Intent(this, DetalleCompraActivity::class.java)
-                intent.putExtra("id_venta", venta.idVenta)
-                startActivity(intent)
-            }
+    private fun setupDrawer() {
+        findViewById<View>(R.id.navCartelera)?.setOnClickListener   { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, PeliculasActivity::class.java)) }
+        findViewById<View>(R.id.navEntradas)?.setOnClickListener    { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, MisEntradasActivity::class.java)) }
+        findViewById<View>(R.id.navConfiteria)?.setOnClickListener  { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, ConfiteriaActivity::class.java)) }
+        findViewById<View>(R.id.navHistorial)?.setOnClickListener   { drawerLayout.closeDrawer(GravityCompat.START) }
+        findViewById<View>(R.id.navQR)?.setOnClickListener          { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, QRScannerActivity::class.java)) }
+        findViewById<View>(R.id.navCerrarSesion)?.setOnClickListener {
+            drawerLayout.closeDrawer(GravityCompat.START)
+            com.idat.movietime.network.SessionManager(this).cerrarSesion()
+            startActivity(Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            })
         }
     }
 
-    private fun obtenerVentasCliente(idCliente: Int): List<VentaDetalle> {
-        val resultado = mutableListOf<VentaDetalle>()
-        val db: SQLiteDatabase = dbHelper!!.readableDatabase
+    private fun cargarHistorial() {
+        Thread {
+            val lista = dbHelper.getHistorialCliente(idClienteActual)
 
-        val sql =
-            "SELECT v.id_venta, v.fecha_venta, v.total, v.subtotal, v.descuento, " +
-                    "       v.tipo_comprobante, v.metodo_pago, v.estado, " +
-                    "       de.id_detalle_entrada, de.codigo_qr, de.estado_ingreso, de.precio_unitario, " +
-                    "       f.fecha_hora, p.titulo, s.nombre AS nombre_sala, b.fila, b.numero " +
-                    "FROM ventas v " +
-                    "LEFT JOIN detalle_entradas de ON de.id_venta   = v.id_venta " +
-                    "LEFT JOIN funciones        f  ON f.id_funcion  = de.id_funcion " +
-                    "LEFT JOIN peliculas        p  ON p.id_pelicula = f.id_pelicula " +
-                    "LEFT JOIN butacas          b  ON b.id_butaca   = de.id_butaca " +
-                    "LEFT JOIN salas            s  ON s.id_sala     = b.id_sala " +
-                    "WHERE v.id_cliente = ? " +
-                    "ORDER BY v.fecha_venta DESC"
+            runOnUiThread {
+                if (lista.isEmpty()) {
+                    tvHistorialVacio.visibility  = View.VISIBLE
+                    recyclerHistorial.visibility = View.GONE
+                } else {
+                    tvHistorialVacio.visibility  = View.GONE
+                    recyclerHistorial.visibility = View.VISIBLE
 
-        val cursor = db.rawQuery(sql, arrayOf(idCliente.toString()))
+                    recyclerHistorial.adapter = HistorialAdapter(lista) { venta ->
+                        // FIX: id_venta es el único extra OBLIGATORIO.
+                        // DetalleCompraActivity lo usa para consultar la BD completa.
+                        // Los extras adicionales son solo para mostrar algo mientras carga.
+                        val intent = Intent(this, DetalleCompraActivity::class.java)
 
-        var ultimoIdVenta = -1
-        var ventaActual: VentaDetalle? = null
+                        // ── OBLIGATORIO ──────────────────────────────────────
+                        intent.putExtra("id_venta", venta.idVenta)
 
-        while (cursor.moveToNext()) {
-            val idVenta = cursor.getInt(cursor.getColumnIndexOrThrow("id_venta"))
+                        // ── Datos de pago (fallback mientras carga la BD) ────
+                        intent.putExtra("metodo_pago",      venta.metodoPago      ?: "")
+                        intent.putExtra("tipo_comprobante", venta.tipoComprobante ?: "Boleta")
+                        intent.putExtra("gran_total",       venta.total)
+                        intent.putExtra("total_entradas",   venta.subtotal)
+                        intent.putExtra("descuento",        venta.descuento)
 
-            if (idVenta != ultimoIdVenta) {
-                ventaActual = VentaDetalle().apply {
-                    this.idVenta         = idVenta
-                    this.fechaVenta      = cursor.getString(cursor.getColumnIndexOrThrow("fecha_venta"))
-                    this.total           = cursor.getDouble(cursor.getColumnIndexOrThrow("total"))
-                    this.subtotal        = cursor.getDouble(cursor.getColumnIndexOrThrow("subtotal"))
-                    this.descuento       = cursor.getDouble(cursor.getColumnIndexOrThrow("descuento"))
-                    this.tipoComprobante = cursor.getString(cursor.getColumnIndexOrThrow("tipo_comprobante"))
-                    this.metodoPago      = cursor.getString(cursor.getColumnIndexOrThrow("metodo_pago"))
-                    this.estadoVenta     = cursor.getString(cursor.getColumnIndexOrThrow("estado"))
-                    this.entradas        = ArrayList()
+                        startActivity(intent)
+                    }
                 }
-                resultado.add(ventaActual)
-                ultimoIdVenta = idVenta
             }
-
-            if (!cursor.isNull(cursor.getColumnIndexOrThrow("id_detalle_entrada"))) {
-                val entrada = EntradaItem().apply {
-                    tituloPelicula   = cursor.getString(cursor.getColumnIndexOrThrow("titulo"))
-                    fechaHoraFuncion = cursor.getString(cursor.getColumnIndexOrThrow("fecha_hora"))
-                    nombreSala       = cursor.getString(cursor.getColumnIndexOrThrow("nombre_sala"))
-                    fila             = cursor.getString(cursor.getColumnIndexOrThrow("fila"))
-                    numero           = cursor.getInt(cursor.getColumnIndexOrThrow("numero"))
-                    precioUnitario   = cursor.getDouble(cursor.getColumnIndexOrThrow("precio_unitario"))
-                    codigoQR         = cursor.getString(cursor.getColumnIndexOrThrow("codigo_qr"))
-                }
-                ventaActual?.entradas?.add(entrada)
-            }
-        }
-
-        cursor.close()
-        db.close()
-        return resultado
+        }.start()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        dbHelper?.close()
+        dbHelper.close()
     }
 }

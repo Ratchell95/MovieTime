@@ -6,11 +6,14 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.idat.movietime.adapter.PeliculasAdapter
 import com.idat.movietime.db.PeliculasRepository
 import com.idat.movietime.model.Pelicula
+import kotlinx.coroutines.launch
+import com.idat.movietime.network.RetrofitClient
 
 class PeliculasTabFragment : Fragment() {
 
@@ -49,43 +52,90 @@ class PeliculasTabFragment : Fragment() {
             else           -> "Activa"
         }
 
-        val peliculas: List<Pelicula> = try {
-            val lista = PeliculasRepository(requireContext()).getPeliculasPorEstado(estadoBD)
+        viewLifecycleOwner.lifecycleScope.launch {
+            var peliculasParaMostrar: List<Pelicula> = emptyList()
 
-            lista.ifEmpty { obtenerPeliculasFallback() }
+            try {
+                // 1. Traemos las películas de MySQL o SQLite (Cartelera General)
+                val response = if (tipo == "proximamente") {
+                    RetrofitClient.api.getProximamente()
+                } else {
+                    RetrofitClient.api.getPeliculas()
+                }
+
+                if (response.isSuccessful && response.body()?.success == true) {
+                    peliculasParaMostrar = response.body()?.data ?: emptyList()
+                    // Sincronización con SQLite
+                    val repository = PeliculasRepository(requireContext())
+                    peliculasParaMostrar.forEach { p -> repository.insertarPelicula(p) }
+                } else {
+                    peliculasParaMostrar = cargarDesdeSQLite(estadoBD)
+                }
+            } catch (e: Exception) {
+                peliculasParaMostrar = cargarDesdeSQLite(estadoBD)
+            }
+
+
+            if (tipo == "opera") {
+                // Si estamos en la pestaña Ópera, solo dejamos las que tengan ese género
+                peliculasParaMostrar = peliculasParaMostrar.filter {
+                    it.genero.contains("Opera", ignoreCase = true) ||
+                            it.genero.contains("Ópera", ignoreCase = true)
+                }
+            } else if (tipo == "cartelera") {
+                // Si estamos en Cartelera, quitamos las de Ópera para que no se mezclen
+                peliculasParaMostrar = peliculasParaMostrar.filter {
+                    !it.genero.contains("Opera", ignoreCase = true) &&
+                            !it.genero.contains("Ópera", ignoreCase = true)
+                }
+            }
+
+            // 4. Dibujar la lista filtrada en el RecyclerView
+            adapter = PeliculasAdapter(peliculasParaMostrar) { pelicula ->
+                val intent = Intent(requireContext(), DetallePeliculaActivity::class.java).apply {
+                    putExtra("id_pelicula",   pelicula.id)
+                    putExtra("titulo",        pelicula.titulo)
+                    putExtra("duracion_min",  pelicula.duracionMin)
+                    putExtra("clasificacion", pelicula.clasificacion)
+                    putExtra("sinopsis",      pelicula.sinopsis)
+                    putExtra("imagen_url",    pelicula.imagenUrl)
+                }
+                startActivity(intent)
+            }
+            recyclerView.adapter = adapter
+        }
+
+
+    }
+    // SOLUCIÓN: Agregamos la palabra "suspend" aquí ↓
+    private suspend fun cargarDesdeSQLite(estadoBD: String): List<Pelicula> {
+        return try {
+            if (tipo == "opera") {
+                obtenerPeliculasFallback()
+            } else {
+                // Ahora Kotlin sí te permitirá llamar a esta función de SQLite
+                val lista = PeliculasRepository(requireContext()).getPeliculasPorEstado(estadoBD)
+                lista.ifEmpty { obtenerPeliculasFallback() }
+            }
         } catch (e: Exception) {
             obtenerPeliculasFallback()
         }
-
-        adapter = PeliculasAdapter(peliculas) { pelicula ->
-
-            val intent = Intent(requireContext(), DetallePeliculaActivity::class.java).apply {
-                putExtra("id_pelicula",   pelicula.id)
-                putExtra("titulo",        pelicula.titulo)
-                putExtra("duracion_min",  pelicula.duracionMin)
-                putExtra("clasificacion", pelicula.clasificacion)
-                putExtra("sinopsis",      pelicula.sinopsis)
-                putExtra("imagen_url",    pelicula.posterUrl.ifEmpty { pelicula.imagenUrl })
-            }
-            startActivity(intent)
-        }
-        recyclerView.adapter = adapter
     }
 
     private fun obtenerPeliculasFallback(): List<Pelicula> = when (tipo) {
         "cartelera" -> listOf(
-            Pelicula(1, "Iron Lung: Océano de Sangre", 2026, "", 108, "R",     "Terror",              "2D", "Basado en el videojuego indie de terror.", "", "Activa"),
-            Pelicula(2, "Espía Entre Animales",        2026, "", 95,  "G",     "Animación / Comedia", "3D", "Aventura animada para toda la familia.",   "", "Activa"),
-            Pelicula(3, "Avengers: Doomsday",          2026, "", 150, "PG-13", "Acción / Superhéroes","XD", "El universo Marvel enfrenta su mayor amenaza.", "", "Activa"),
-            Pelicula(4, "Minecraft: La Película",      2026, "", 110, "PG",    "Aventura / Familia",  "2D", "Cuatro inadaptados en el Overworld.",      "", "Activa")
+            Pelicula(id = 1, titulo = "Iron Lung: Océano de Sangre", anio = 2026, duracionMin = 108, clasificacion = "R", genero = "Terror", formato = "2D", sinopsis = "Basado en el videojuego indie de terror.", estado = "Activa"),
+            Pelicula(id = 2, titulo = "Espía Entre Animales", anio = 2026, duracionMin = 95, clasificacion = "G", genero = "Animación / Comedia", formato = "3D", sinopsis = "Aventura animada para toda la familia.", estado = "Activa"),
+            Pelicula(id = 3, titulo = "Avengers: Doomsday", anio = 2026, duracionMin = 150, clasificacion = "PG-13", genero = "Acción / Superhéroes", formato = "XD", sinopsis = "El universo Marvel enfrenta su mayor amenaza.", estado = "Activa"),
+            Pelicula(id = 4, titulo = "Minecraft: La Película", anio = 2026, duracionMin = 110, clasificacion = "PG", genero = "Aventura / Familia", formato = "2D", sinopsis = "Cuatro inadaptados en el Overworld.", estado = "Activa")
         )
         "proximamente" -> listOf(
-            Pelicula(5, "Superman: Legacy",             2026, "", 130, "PG-13", "Acción",   "XD", "El regreso del Hombre de Acero.",     "", "Inactiva"),
-            Pelicula(6, "Jurassic World: Renacimiento", 2026, "", 125, "PG-13", "Aventura", "3D", "Nueva expedición a una isla remota.", "", "Inactiva")
+            Pelicula(id = 5, titulo = "Superman: Legacy", anio = 2026, duracionMin = 130, clasificacion = "PG-13", genero = "Acción", formato = "XD", sinopsis = "El regreso del Hombre de Acero.", estado = "Inactiva"),
+            Pelicula(id = 6, titulo = "Jurassic World: Renacimiento", anio = 2026, duracionMin = 125, clasificacion = "PG-13", genero = "Aventura", formato = "3D", sinopsis = "Nueva expedición a una isla remota.", estado = "Inactiva")
         )
         "opera" -> listOf(
-            Pelicula(7, "La Traviata", 2026, "", 180, "TP", "Ópera", "2D", "Ópera de Giuseppe Verdi en el cine.",  "", "Activa"),
-            Pelicula(8, "Carmen",      2026, "", 165, "TP", "Ópera", "2D", "La ópera más famosa de Georges Bizet.", "", "Activa")
+            Pelicula(id = 7, titulo = "La Traviata", anio = 2026, duracionMin = 180, clasificacion = "TP", genero = "Ópera", formato = "2D", sinopsis = "Ópera de Giuseppe Verdi en el cine.", estado = "Activa"),
+            Pelicula(id = 8, titulo = "Carmen", anio = 2026, duracionMin = 165, clasificacion = "TP", genero = "Ópera", formato = "2D", sinopsis = "La ópera más famosa de Georges Bizet.", estado = "Activa")
         )
         else -> emptyList()
     }

@@ -2,8 +2,8 @@ package com.idat.movietime
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.Gravity
 import android.view.MenuItem
+import androidx.core.view.GravityCompat
 import android.view.View
 import android.widget.ImageButton
 import androidx.appcompat.app.AppCompatActivity
@@ -54,16 +54,25 @@ class PeliculasActivity : AppCompatActivity() {
 
     private fun setupDrawer() {
         findViewById<ImageButton>(R.id.btnMenu)?.setOnClickListener {
-            if (drawerLayout.isDrawerOpen(Gravity.START)) drawerLayout.closeDrawer(Gravity.START)
-            else drawerLayout.openDrawer(Gravity.START)
+            if (drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.closeDrawer(GravityCompat.START)
+            else drawerLayout.openDrawer(GravityCompat.START)
         }
-        findViewById<View>(R.id.navCartelera)?.setOnClickListener   { drawerLayout.closeDrawer(Gravity.START) }
-        findViewById<View>(R.id.navEntradas)?.setOnClickListener    { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, HistorialActivity::class.java)) }
-        findViewById<View>(R.id.navConfiteria)?.setOnClickListener  { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, ConfiteriaActivity::class.java)) }
-        findViewById<View>(R.id.navHistorial)?.setOnClickListener   { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, HistorialActivity::class.java)) }
-        findViewById<View>(R.id.navQR)?.setOnClickListener         { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, QRScannerActivity::class.java)) }
+        findViewById<View>(R.id.navCartelera)?.setOnClickListener   { drawerLayout.closeDrawer(GravityCompat.START) }
+
+        findViewById<View>(R.id.navEntradas)?.setOnClickListener {
+            drawerLayout.closeDrawer(GravityCompat.START)
+            // DEBE DECIR MisEntradasActivity::class.java
+            startActivity(Intent(this, MisEntradasActivity::class.java))
+        }
+        findViewById<View>(R.id.navConfiteria)?.setOnClickListener  { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, ConfiteriaActivity::class.java)) }
+        findViewById<View>(R.id.navHistorial)?.setOnClickListener   { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, HistorialActivity::class.java)) }
+        findViewById<View>(R.id.navQR)?.setOnClickListener         { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, QRScannerActivity::class.java)) }
+
+
         findViewById<View>(R.id.navCerrarSesion)?.setOnClickListener {
-            drawerLayout.closeDrawer(Gravity.START)
+            drawerLayout.closeDrawer(GravityCompat.START)
+            com.idat.movietime.network.SessionManager(this).cerrarSesion()
+
             startActivity(Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             })

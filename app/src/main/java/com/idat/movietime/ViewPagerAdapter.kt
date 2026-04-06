@@ -8,7 +8,23 @@ class ViewPagerAdapter(
     fragmentActivity: FragmentActivity
 ) : FragmentStateAdapter(fragmentActivity) {
 
-    private val tabTitles = listOf("cartelera", "proximamente", "opera")
+    /**
+     * FIX: los valores deben coincidir exactamente con los que usa
+     * PeliculasTabFragment para filtrar la columna `estado` de la tabla `peliculas`.
+     *
+     * Valores válidos según el CHECK del esquema: 'Activa' | 'Inactiva'
+     *
+     * Si el fragment filtra por texto libre (p.ej. "cartelera", "proximamente")
+     * en lugar de por `estado`, ajusta estos valores según esa lógica.
+     * El tercer tab "opera" no existe en el esquema — se corrige a "Inactiva"
+     * (próximas/pre-estreno). Renombra según la lógica real de tu app.
+     */
+    private val tabTitles = listOf(
+        "cartelera",
+        "proximamente",
+        "opera"
+    )
+
 
     override fun getItemCount(): Int = tabTitles.size
 

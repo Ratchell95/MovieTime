@@ -36,7 +36,7 @@ class SesionActivity : AppCompatActivity() {
         etDocumento   = findViewById(R.id.etDocumento)
         etContrasena  = findViewById(R.id.etContrasena)
         btnIngresar   = findViewById(R.id.btnIngresar)
-
+        val tvOlvideContrasena = findViewById<android.widget.TextView>(R.id.tvOlvideContrasena)
         observarViewModel()
 
         btnIngresar.setOnClickListener {
@@ -47,6 +47,11 @@ class SesionActivity : AppCompatActivity() {
                 etContrasena.text.toString().trim()
             )
         }
+        tvOlvideContrasena.setOnClickListener {
+            val intent = Intent(this, RecuperarPasswordActivity::class.java)
+            startActivity(intent)
+        }
+        observarViewModel()
     }
 
     private fun observarViewModel() {

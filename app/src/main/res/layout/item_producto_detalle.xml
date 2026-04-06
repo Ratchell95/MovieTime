@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  item_producto_detalle.xml
+  Fila de producto de confitería dentro de DetalleCompraActivity.
+  Se infla dinámicamente en containerProductos.
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:layout_marginBottom="6dp">
+
+    <TextView
+        android:id="@+id/tvNombreProducto"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="1x  Combo grande"
+        android:textColor="#CCCCCC"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/tvPrecioProducto"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="S/ 18.00"
+        android:textColor="#CCCCCC"
+        android:textSize="13sp" />
+
+</LinearLayout>
