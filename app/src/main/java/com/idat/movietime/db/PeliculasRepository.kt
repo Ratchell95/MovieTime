@@ -11,18 +11,6 @@ class PeliculasRepository(private val context: Context) {
 
     private val dbHelper = DatabaseHelper(context)
 
-    /**
-     * Devuelve las películas filtradas por estado.
-     *
-     * Es una suspend function: se debe llamar desde un coroutine scope.
-     * Internamente cambia al dispatcher IO para no bloquear el UI thread.
-     *
-     * Uso desde un ViewModel:
-     *   viewModelScope.launch {
-     *       val lista = repository.getPeliculasPorEstado("Activa")
-     *       _peliculas.value = lista
-     *   }
-     */
     suspend fun getPeliculasPorEstado(estado: String): List<Pelicula> =
         withContext(Dispatchers.IO) {
             val lista = mutableListOf<Pelicula>()

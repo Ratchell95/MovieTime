@@ -2,19 +2,23 @@ package com.idat.movietime.network
 
 import com.idat.movietime.model.LoginRequest
 import com.idat.movietime.model.LoginResponse
+import com.idat.movietime.model.Pelicula
+
+import com.idat.movietime.model.VentaRequest
+import com.idat.movietime.model.ApiResponse
+import com.idat.movietime.model.VentaResumenResponse
+import retrofit2.Call
 import retrofit2.Response
 import retrofit2.http.*
-import com.idat.movietime.model.Pelicula
 
 interface MovieTimeApi {
 
-    // FIX: el backend devuelve ApiResponse<LoginResponse> (con wrapper success/message/data),
-    //      no LoginResponse directamente. Sin este cambio Gson mapea todo a null.
     @POST("auth/login")
     suspend fun login(@Body body: LoginRequest): Response<ApiResponse<LoginResponse>>
 
     @POST("auth/logout")
     suspend fun logout(): Response<Map<String, String>>
+
 
     @GET("peliculas")
     suspend fun getPeliculas(): Response<ApiResponse<List<Pelicula>>>
@@ -101,6 +105,13 @@ interface MovieTimeApi {
 
     @GET("checkin/funcion/{funcionId}")
     suspend fun getCheckinByFuncion(
+
         @Path("funcionId") funcionId: Long
     ): Response<ApiResponse<List<Map<String, Any>>>>
+
+    @POST("ventas")
+    fun registrarVenta(@Body request: VentaRequest): Call<ApiResponse<VentaResumenResponse>>
+
+    @POST("auth/google")
+    suspend fun loginConGoogle(@Body body: Map<String, String>): Response<ApiResponse<LoginResponse>>
 }

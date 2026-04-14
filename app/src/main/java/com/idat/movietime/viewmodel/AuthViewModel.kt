@@ -57,6 +57,17 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // --- NUEVA FUNCIÓN PARA CONECTAR GOOGLE CON EL REPOSITORIO ---
+    fun loginConGoogle(email: String, nombres: String) {
+        viewModelScope.launch {
+            _cargando.value = true
+            val resultado = repository.loginConGoogle(email, nombres)
+            _loginResult.value = resultado
+            _cargando.value = false
+        }
+    }
+    // -----------------------------------------------------------
+
     fun cerrarSesion() = repository.cerrarSesion()
     fun isLoggedIn()   = repository.isLoggedIn()
 }

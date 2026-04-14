@@ -138,12 +138,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                         "BEFORE INSERT ON ventas " +
                         "WHEN NEW.id_cliente IS NOT NULL " +
                         "BEGIN " +
-                        "  SELECT RAISE(ABORT, 'id_cliente debe tener rol Cliente') " +
-                        "  WHERE (SELECT id_rol FROM usuarios WHERE id_usuario = NEW.id_cliente) != " +
-                        "        (SELECT id_rol FROM roles WHERE nombre = 'Cliente'); " +
+                        "  SELECT RAISE(ABORT, 'El rol Control no tiene permisos para vender') " +
+                        "  WHERE (SELECT id_rol FROM usuarios WHERE id_usuario = NEW.id_cliente) = " +
+                        "        (SELECT id_rol FROM roles WHERE nombre = 'Control'); " +
                         "END");
     }
-
     // ──────────────────────────────────────────────────────────────
     //  DATOS INICIALES
     // ──────────────────────────────────────────────────────────────
@@ -342,9 +341,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return venta;
     }
 
-    // ──────────────────────────────────────────────────────────────
-    //  HELPERS PRIVADOS DE MAPEO
-    // ──────────────────────────────────────────────────────────────
 
     private VentaDetalle mapearVentaBase(Cursor c) {
         VentaDetalle v = new VentaDetalle();

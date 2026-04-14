@@ -17,19 +17,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 import java.util.function.Consumer;
-
-/**
- * HistorialAdapter
- *
- * FIX: antes mostraba "Compra" con "—" porque accedía a venta.entradas sin verificar
- * que el JOIN de DatabaseHelper hubiera retornado datos. Ahora:
- *  - tieneEntradas() / tieneConfiteria() son llamados correctamente.
- *  - El formato de fecha usa TZ UTC → Lima.
- *  - Si la venta tiene entradas, muestra título de película, fecha de función,
- *    butaca y sala correctamente.
- *  - Si es solo confitería, muestra los productos.
- *  - El color del estado distingue Anulada (rojo) vs Completada (verde).
- */
 public class HistorialAdapter extends RecyclerView.Adapter<HistorialAdapter.VH> {
     private static final TimeZone TZ_UTC  = TimeZone.getTimeZone("UTC");
     private static final TimeZone TZ_PERU = TimeZone.getTimeZone("America/Lima");
@@ -62,22 +49,17 @@ public class HistorialAdapter extends RecyclerView.Adapter<HistorialAdapter.VH> 
             h.tvHistEstado.setTextColor(0xFF4CAF50);
         }
 
-        // ── Título: película o "Solo confitería" ──────────────────────
-        // FIX: tieneEntradas() verifica que la lista no esté vacía Y que el JOIN
-        //      haya devuelto datos reales (tituloPelicula != null).
+
         if (v.tieneEntradas()) {
             VentaDetalle.EntradaItem primera = v.entradas.get(0);
 
-            // Título + formato
             String titulo = primera.tituloPelicula != null ? primera.tituloPelicula : "Entrada";
             if (primera.formato != null && !primera.formato.isEmpty())
                 titulo += "  (" + primera.formato + ")";
             h.tvHistTitulo.setText(titulo);
 
-            // Fecha de función (no fecha de venta)
             h.tvHistFecha.setText(formatFechaFuncion(primera.fechaHoraFuncion));
 
-            // Butaca + sala
             String butacaInfo = "Butaca " + primera.getButacaLabel();
             if (primera.nombreSala != null && !primera.nombreSala.isEmpty())
                 butacaInfo += "  ·  " + primera.nombreSala;

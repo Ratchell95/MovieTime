@@ -53,6 +53,18 @@
             android:textColor="#FFFFFF"
             android:textSize="16sp"
             android:textStyle="bold" />
+        <!-- NUEVO BOTÓN DE GOOGLE PARA FIREBASE -->
+        <Button
+            android:id="@+id/btnGoogle"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:layout_marginBottom="16dp"
+            android:backgroundTint="#FFFFFF"
+            android:text="Continuar con Google"
+            android:textAllCaps="false"
+            android:textColor="#757575"
+            android:textSize="16sp"
+            android:textStyle="bold" />
 
         <Button
             android:id="@+id/btnInvitado"

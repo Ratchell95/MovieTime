@@ -3,15 +3,20 @@ package com.idat.movietime
 import android.content.Intent
 import android.os.Bundle
 import android.os.CountDownTimer
-import android.text.Editable
-import android.text.TextWatcher
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
 import com.idat.movietime.db.DatabaseHelper
 import com.idat.movietime.model.VentaDetalle
+import com.idat.movietime.model.VentaRequest
+import com.idat.movietime.model.ApiResponse
+import com.idat.movietime.model.VentaResumenResponse
+import com.idat.movietime.network.RetrofitClient
 import com.idat.movietime.network.SessionManager
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 class PagoActivity : AppCompatActivity() {
 
@@ -87,36 +92,111 @@ class PagoActivity : AppCompatActivity() {
             return
         }
 
-        val sessionID = SessionManager(this).getIdUsuario()
-        val idClienteFinal = if (sessionID > 0) sessionID else 1
+        // 1. Bloquear botón para que el usuario no presione 2 veces
+        btnPagar.isEnabled = false
+        btnPagar.text = "PROCESANDO..."
 
+        // 2. Preparar el objeto Request para Spring Boot
+        val sessionID = SessionManager(this).getIdUsuario()
+        val idClienteFinal = if (sessionID > 0) sessionID else null
+
+        // 2.1 Parsear las entradas
+        val listaEntradas = mutableListOf<VentaRequest.EntradaItem>()
+        if (idButacasStr.isNotEmpty() && idFuncion > 0) {
+            val butacasIds = idButacasStr.split(",").mapNotNull { it.trim().toIntOrNull() }
+            for (bId in butacasIds) {
+                listaEntradas.add(VentaRequest.EntradaItem(idFuncion, bId))
+            }
+        } else {
+            // Si son entradas no numeradas, armamos datos genéricos (Asegúrate que MySQL lo permita)
+            for (i in 1..cantidad) {
+                listaEntradas.add(VentaRequest.EntradaItem(idFuncion, i))
+            }
+        }
+
+        // 2.2 Parsear la confitería
+        val listaConfiteria = mutableListOf<VentaRequest.ConfiteriaItem>()
+        if (confiteriaStr.isNotEmpty()) {
+            confiteriaStr.split(",").forEach { parte ->
+                val campos = parte.split(":")
+                if (campos.size >= 2) {
+                    val idProd = campos[0].trim().toIntOrNull() ?: 0
+                    val cant = campos[1].trim().toIntOrNull() ?: 1
+                    if (idProd > 0) {
+                        listaConfiteria.add(VentaRequest.ConfiteriaItem(idProd, cant))
+                    }
+                }
+            }
+        }
+
+        // 2.3 Ensamblar la petición final
+        val request = VentaRequest(
+            idCliente = idClienteFinal,
+            idPromocion = idPromocion,
+            canalVenta = "App",
+            tipoComprobante = tipoComprobante,
+            metodoPago = metodoPago,
+            entradas = listaEntradas,
+            confiteria = listaConfiteria
+        )
+
+        // 3. ENVIAR A MYSQL VÍA RETROFIT Y SPRING BOOT
+        RetrofitClient.api.registrarVenta(request).enqueue(object : Callback<ApiResponse<VentaResumenResponse>> {
+
+            override fun onResponse(call: Call<ApiResponse<VentaResumenResponse>>, response: Response<ApiResponse<VentaResumenResponse>>) {
+                if (response.isSuccessful && response.body()?.success == true) {
+
+                    // ¡ÉXITO EN EL SERVIDOR! Ahora guardamos localmente para la UI y el QR
+                    timer?.cancel()
+                    finalizarCompraLocalYMostrarQR(
+                        total, subtotal, descuento, idFuncion, idButacasStr,
+                        codigosQRStr, confiteriaStr, idPromocion, cantidad, butacas
+                    )
+
+                } else {
+                    // Falló en el backend (ej: butaca ya ocupada o error 400)
+                    btnPagar.isEnabled = true
+                    btnPagar.text = "PAGAR"
+                    Toast.makeText(this@PagoActivity, "Error del servidor: Revisa los datos de compra", Toast.LENGTH_LONG).show()
+                }
+            }
+
+            override fun onFailure(call: Call<ApiResponse<VentaResumenResponse>>, t: Throwable) {
+                // No hay conexión con tu localhost/servidor
+                btnPagar.isEnabled = true
+                btnPagar.text = "PAGAR"
+                Toast.makeText(this@PagoActivity, "Sin conexión al servidor MySQL. Revisa tu red.", Toast.LENGTH_LONG).show()
+            }
+        })
+    }
+
+
+    // Este método se llama SOLO si el servidor Spring Boot responde OK
+    private fun finalizarCompraLocalYMostrarQR(
+        total: Double, subtotal: Double, descuento: Double, idFuncion: Int,
+        idButacasStr: String, codigosQRStr: String, confiteriaStr: String,
+        idPromocion: Int?, cantidad: Int, butacas: String
+    ) {
         val codigoQRFinal = if (codigosQRStr.isNotEmpty()) {
             codigosQRStr.split("|").firstOrNull() ?: generarCodigoQR()
         } else {
             generarCodigoQR()
         }
 
-        timer?.cancel()
-
-        val idVenta = guardarEnSQLite(
-            total, subtotal, descuento,
-            idFuncion, idButacasStr, codigoQRFinal,
-            confiteriaStr, idPromocion,
-            cantidad, butacas
+        // Guardado local (Tu código original)
+        val idVentaLocal = guardarEnSQLite(
+            total, subtotal, descuento, idFuncion, idButacasStr, codigoQRFinal,
+            confiteriaStr, idPromocion, cantidad, butacas
         )
 
-        if (idVenta > 0) {
-
-            // 👇 AGREGA ESTA LÍNEA PARA BLOQUEAR LOS ASIENTOS 👇
+        if (idVentaLocal > 0) {
             DatabaseHelper(this).bloquearButacasPermanentes(butacas, idFuncion)
 
             val intentDetalle = Intent(this, DetalleCompraActivity::class.java).apply {
-                putExtra("id_venta", idVenta.toInt())
+                putExtra("id_venta", idVentaLocal.toInt())
                 putExtra("metodo_pago", metodoPago)
                 putExtra("tipo_comprobante", tipoComprobante)
                 putExtra("gran_total", total)
-
-                // 👇 ESTAS LÍNEAS YA LAS HABÍAMOS PUESTO PARA EL QR 👇
                 putExtra("titulo",  intent.getStringExtra("titulo") ?: "")
                 putExtra("butacas", butacas)
                 putExtra("sala",    intent.getStringExtra("sala")  ?: "SALA 05")
@@ -125,9 +205,8 @@ class PagoActivity : AppCompatActivity() {
             }
             startActivity(intentDetalle)
             finish()
-        }
-        else {
-            Toast.makeText(this, "Error al registrar la compra", Toast.LENGTH_LONG).show()
+        } else {
+            Toast.makeText(this, "Se guardó en la nube pero falló localmente", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -139,10 +218,10 @@ class PagoActivity : AppCompatActivity() {
     ): Long {
         val db = DatabaseHelper(this)
         val sessionID = SessionManager(this).getIdUsuario()
-        val idClienteFinal = if (sessionID > 0) sessionID else 1
+        val idClienteFinal = if (sessionID > 0) sessionID else -1 // <-- Corregido para Trigger
+
         val funcId = if (idFuncion > 0) idFuncion else 1
 
-        // Definición correcta de variables
         var idButacas: List<Int> = emptyList()
         var codigosQR: List<String> = emptyList()
 

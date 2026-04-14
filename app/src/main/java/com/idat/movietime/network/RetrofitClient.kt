@@ -8,7 +8,10 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
 
+    //conexion LOCALHOST
     private const val BASE_URL = "http://10.0.2.2:8080/api/"
+
+
     private var sessionManager: SessionManager? = null
 
     fun init(manager: SessionManager) {

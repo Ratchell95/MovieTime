@@ -6,13 +6,14 @@ import android.widget.Button
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.idat.movietime.network.RetrofitClient
 import com.idat.movietime.network.SessionManager
 import com.idat.movietime.repository.AuthResult
 import com.idat.movietime.viewmodel.AuthViewModel
-
+import kotlinx.coroutines.launch
 class SesionActivity : AppCompatActivity() {
 
     private lateinit var tilDocumento:  TextInputLayout
@@ -80,5 +81,32 @@ class SesionActivity : AppCompatActivity() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         })
         finish()
+    }
+
+    private fun enviarGoogleAlBackend(emailGoogle: String, nombreGoogle: String) {
+        val request = mapOf("email" to emailGoogle, "nombres" to nombreGoogle)
+
+        lifecycleScope.launch {
+            val response = RetrofitClient.api.loginConGoogle(request)
+
+            if (response.isSuccessful && response.body()?.success == true) {
+                val loginResponse = response.body()?.data
+
+                if (loginResponse != null) {
+
+                    SessionManager(this@SesionActivity).guardarSesion(
+                        token = loginResponse.token,
+                        idUsuario = loginResponse.idUsuario,
+                        nombres = loginResponse.nombres,
+                        rol = loginResponse.rol,
+                        email = loginResponse.email
+                    )
+
+                    Toast.makeText(this@SesionActivity, "¡Ingreso con Google exitoso!", Toast.LENGTH_SHORT).show()
+                    startActivity(Intent(this@SesionActivity, InicioActivity::class.java))
+                    finish()
+                }
+            }
+        }
     }
 }

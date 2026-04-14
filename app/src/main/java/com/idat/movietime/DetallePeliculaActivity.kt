@@ -2,6 +2,7 @@ package com.idat.movietime
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -37,41 +38,49 @@ class DetallePeliculaActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_detalle_pelicula)
 
-        findViewById<TextView>(R.id.btnAtras).setOnClickListener {
+        // SOLUCIÓN 1: Usamos <View> genérico para evitar el "ClassCastException" si btnAtras es un ImageView.
+        // Y usamos "?." para que no crashee si el botón no se encuentra en la vista actual.
+        findViewById<View>(R.id.btnAtras)?.setOnClickListener {
             finish()
         }
+
         val idPelicula  = intent.getIntExtra("id_pelicula", 0)
         val titulo      = intent.getStringExtra("titulo")        ?: ""
         val duracion    = intent.getIntExtra("duracion_min",     0)
         val clasif      = intent.getStringExtra("clasificacion") ?: ""
         val sinopsis    = intent.getStringExtra("sinopsis")      ?: ""
         val imagenUrl   = intent.getStringExtra("imagen_url")    ?: ""
-        drawableRes     = intent.getIntExtra("drawable_res",     0)  // ✅ campo de clase
+        drawableRes     = intent.getIntExtra("drawable_res",     0)
 
-        findViewById<TextView>(R.id.tvTitulo).text   = titulo.uppercase()
-        findViewById<TextView>(R.id.tvSinopsis).text = sinopsis
+        // SOLUCIÓN 2: Uso del operador seguro "?." para asignar textos.
+        // Si el elemento no existe en el XML, simplemente se ignora y NO rompe la app.
+        findViewById<TextView>(R.id.tvTitulo)?.text   = titulo.uppercase()
+        findViewById<TextView>(R.id.tvSinopsis)?.text = sinopsis
         val h = duracion / 60; val m = duracion % 60
-        findViewById<TextView>(R.id.tvDuracion).text = "$h hr $m min | $clasif"
+        findViewById<TextView>(R.id.tvDuracion)?.text = "$h hr $m min | $clasif"
 
         val ivPoster = findViewById<ImageView>(R.id.ivPoster)
-        ivPoster.scaleType = ImageView.ScaleType.CENTER_CROP
+        ivPoster?.scaleType = ImageView.ScaleType.CENTER_CROP
 
         val resDirecto = if (drawableRes != 0) drawableRes else drawableMap[idPelicula] ?: 0
 
-        when {
-            resDirecto != 0 -> {
-                ivPoster.setImageResource(resDirecto)
-            }
-            imagenUrl.isNotEmpty() -> {
-                Glide.with(this)
-                    .load(imagenUrl)
-                    .centerCrop()
-                    .placeholder(R.drawable.ic_pelicula_placeholder)
-                    .error(R.drawable.ic_pelicula_placeholder)
-                    .into(ivPoster)
-            }
-            else -> {
-                ivPoster.setImageResource(R.drawable.ic_pelicula_placeholder)
+        // SOLUCIÓN 3: Bloque seguro let para Glide y Resource
+        ivPoster?.let { poster ->
+            when {
+                resDirecto != 0 -> {
+                    poster.setImageResource(resDirecto)
+                }
+                imagenUrl.isNotEmpty() -> {
+                    Glide.with(this)
+                        .load(imagenUrl)
+                        .centerCrop()
+                        .placeholder(R.drawable.ic_pelicula_placeholder)
+                        .error(R.drawable.ic_pelicula_placeholder)
+                        .into(poster)
+                }
+                else -> {
+                    poster.setImageResource(R.drawable.ic_pelicula_placeholder)
+                }
             }
         }
 
@@ -88,11 +97,11 @@ class DetallePeliculaActivity : AppCompatActivity() {
             val tvMes = when(i) { 0 -> R.id.tvMes1; 1 -> R.id.tvMes2; else -> R.id.tvMes3 }
             val tvLbl = when(i) { 0 -> R.id.tvLabel1; 1 -> R.id.tvLabel2; else -> R.id.tvLabel3 }
 
-            findViewById<TextView>(tvDia).text = sdfDia.format(fecha)
-            findViewById<TextView>(tvMes).text = sdfMes.format(fecha)
-            findViewById<TextView>(tvLbl).text = labels[i]
+            findViewById<TextView>(tvDia)?.text = sdfDia.format(fecha)
+            findViewById<TextView>(tvMes)?.text = sdfMes.format(fecha)
+            findViewById<TextView>(tvLbl)?.text = labels[i]
 
-            btn.setOnClickListener {
+            btn?.setOnClickListener {
                 fechaSeleccionada = fecha
                 fechaBtns.forEach { id ->
                     findViewById<LinearLayout>(id)?.setBackgroundColor(
@@ -124,6 +133,7 @@ class DetallePeliculaActivity : AppCompatActivity() {
         setupHorario(R.id.btnHorarioIquitos2,    idPelicula, titulo, duracion, clasif, "MOVIETIME IQUITOS", "10:00 PM", "SALA: 05")
         setupHorario(R.id.btnHorarioVes1,        idPelicula, titulo, duracion, clasif, "VES1",              "04:00 PM", "SALA: 03")
     }
+
     private fun setupHorario(
         viewId: Int, idPelicula: Int, titulo: String,
         duracion: Int, clasif: String, sede: String, hora: String, sala: String

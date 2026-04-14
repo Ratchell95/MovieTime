@@ -59,10 +59,41 @@ class AuthRepository(private val context: Context) {
         }
     }
 
+    // --- NUEVA FUNCIÓN PARA LOGIN CON GOOGLE ---
+    suspend fun loginConGoogle(email: String, nombres: String): AuthResult {
+        return try {
+            val requestBody = mapOf("email" to email, "nombres" to nombres)
+            val response = RetrofitClient.api.loginConGoogle(requestBody)
+
+            if (response.isSuccessful && response.body() != null) {
+                val apiResponse = response.body()!!
+                if (!apiResponse.success || apiResponse.data == null) {
+                    return AuthResult.Error("Fallo al autenticar con Google en el servidor")
+                }
+
+                val body = apiResponse.data
+                sessionManager.guardarSesion(
+                    token     = body.token,
+                    idUsuario = body.idUsuario,
+                    nombres   = body.nombres,
+                    rol       = body.rol,
+                    email     = body.email
+                )
+
+                registrarHistorialAcceso(body.idUsuario, "Exitoso (Google)")
+                AuthResult.Success(body)
+            } else {
+                AuthResult.Error("Error del servidor al procesar Google Login")
+            }
+        } catch (e: Exception) {
+            AuthResult.SinConexion
+        }
+    }
+    // -------------------------------------------
+
     private fun loginLocal(documento: String, password: String): AuthResult {
         val db = dbHelper.readableDatabase
 
-        // 1. Buscar el usuario por columna 'documento'
         val cursor = db.rawQuery(
             """
             SELECT u.id_usuario, u.nombres, u.apellidos, u.email,

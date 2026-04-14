@@ -48,7 +48,7 @@ dependencies {
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("androidx.cardview:cardview:1.0.0")
     implementation("androidx.activity:activity-ktx:1.9.0")
-    implementation("androidx.fragment:fragment-ktx:1.8.1")   // ← AGREGADO: habilita by viewModels()
+    implementation("androidx.fragment:fragment-ktx:1.8.1")
 
     // ── Lifecycle / ViewModel / LiveData ───────────────────────────
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.3")
@@ -80,4 +80,9 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+
+    // ── FIREBASE Y GOOGLE SIGN IN (¡CORREGIDO PARA KOTLIN DSL!) ────
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.android.gms:play-services-auth:20.7.0")
 }

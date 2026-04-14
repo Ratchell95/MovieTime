@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "60090329557",
+    "project_id": "movietime-eefc1",
+    "storage_bucket": "movietime-eefc1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:60090329557:android:468137381d3ab2b25e355c",
+        "android_client_info": {
+          "package_name": "com.idat.movietime"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "60090329557-5gbqj4o6ga3h20g73k6bjb4gd8g08k11.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.idat.movietime",
+            "certificate_hash": "7509f5a9f4ec17589ec453dac68160c0830088c6"
+          }
+        },
+        {
+          "client_id": "60090329557-7080n66ur6h0jhrnh0iohvim6o7hune6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCmFcO9kAUZEt1zThSTb6LsOnJ5IxtQTtE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "60090329557-7080n66ur6h0jhrnh0iohvim6o7hune6.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
