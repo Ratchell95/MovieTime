@@ -18,8 +18,11 @@ import com.idat.movietime.network.RetrofitClient
 class PeliculasTabFragment : Fragment() {
 
     private lateinit var recyclerView: RecyclerView
-    private lateinit var adapter:      PeliculasAdapter
+    private lateinit var adapter: PeliculasAdapter
     private var tipo: String = ""
+
+    // 🔑 FIX 1: Guard para no recargar si ya hay datos cargados
+    private var yaSeCargaronDatos = false
 
     companion object {
         private const val ARG_TIPO = "tipo"
@@ -33,6 +36,8 @@ class PeliculasTabFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         tipo = arguments?.getString(ARG_TIPO) ?: ""
+        // 🔑 FIX 2: Retener el fragment para que no se destruya al cambiar de tab
+        retainInstance = true
     }
 
     override fun onCreateView(
@@ -45,10 +50,14 @@ class PeliculasTabFragment : Fragment() {
         recyclerView = view.findViewById(R.id.recyclerView)
         recyclerView.layoutManager = GridLayoutManager(context, 2)
 
+
+        if (yaSeCargaronDatos && ::adapter.isInitialized) {
+            recyclerView.adapter = adapter
+            return
+        }
+
         val estadoBD = when (tipo) {
-            "cartelera"    -> "Activa"
             "proximamente" -> "Inactiva"
-            "opera"        -> "Activa"
             else           -> "Activa"
         }
 
@@ -56,16 +65,14 @@ class PeliculasTabFragment : Fragment() {
             var peliculasParaMostrar: List<Pelicula> = emptyList()
 
             try {
-                // 1. Traemos las películas de MySQL o SQLite (Cartelera General)
-                val response = if (tipo == "proximamente") {
-                    RetrofitClient.api.getProximamente()
-                } else {
-                    RetrofitClient.api.getPeliculas()
+                val response = when (tipo) {
+                    "proximamente" -> RetrofitClient.api.getProximamente()
+                    else           -> RetrofitClient.api.getPeliculas()
                 }
 
                 if (response.isSuccessful && response.body()?.success == true) {
                     peliculasParaMostrar = response.body()?.data ?: emptyList()
-                    // Sincronización con SQLite
+                    // Sincroniza con SQLite en background (ya está en Dispatchers.IO por el repository)
                     val repository = PeliculasRepository(requireContext())
                     peliculasParaMostrar.forEach { p -> repository.insertarPelicula(p) }
                 } else {
@@ -75,22 +82,19 @@ class PeliculasTabFragment : Fragment() {
                 peliculasParaMostrar = cargarDesdeSQLite(estadoBD)
             }
 
-
-            if (tipo == "opera") {
-                // Si estamos en la pestaña Ópera, solo dejamos las que tengan ese género
-                peliculasParaMostrar = peliculasParaMostrar.filter {
+            // Filtrar por tab DESPUÉS de obtener los datos
+            peliculasParaMostrar = when (tipo) {
+                "opera" -> peliculasParaMostrar.filter {
                     it.genero.contains("Opera", ignoreCase = true) ||
                             it.genero.contains("Ópera", ignoreCase = true)
                 }
-            } else if (tipo == "cartelera") {
-                // Si estamos en Cartelera, quitamos las de Ópera para que no se mezclen
-                peliculasParaMostrar = peliculasParaMostrar.filter {
+                "cartelera" -> peliculasParaMostrar.filter {
                     !it.genero.contains("Opera", ignoreCase = true) &&
                             !it.genero.contains("Ópera", ignoreCase = true)
                 }
+                else -> peliculasParaMostrar
             }
 
-            // 4. Dibujar la lista filtrada en el RecyclerView
             adapter = PeliculasAdapter(peliculasParaMostrar) { pelicula ->
                 val intent = Intent(requireContext(), DetallePeliculaActivity::class.java).apply {
                     putExtra("id_pelicula",   pelicula.id)
@@ -103,17 +107,15 @@ class PeliculasTabFragment : Fragment() {
                 startActivity(intent)
             }
             recyclerView.adapter = adapter
+            yaSeCargaronDatos = true
         }
-
-
     }
-    // SOLUCIÓN: Agregamos la palabra "suspend" aquí ↓
+
     private suspend fun cargarDesdeSQLite(estadoBD: String): List<Pelicula> {
         return try {
             if (tipo == "opera") {
                 obtenerPeliculasFallback()
             } else {
-                // Ahora Kotlin sí te permitirá llamar a esta función de SQLite
                 val lista = PeliculasRepository(requireContext()).getPeliculasPorEstado(estadoBD)
                 lista.ifEmpty { obtenerPeliculasFallback() }
             }

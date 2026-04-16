@@ -3,6 +3,9 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
 
     <application
         android:allowBackup="true"
@@ -22,24 +25,24 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".SesionActivity"          android:exported="false" />
-        <activity android:name=".RegistroActivity"        android:exported="false" />
-        <activity android:name=".InicioActivity"          android:exported="false" />
-        <activity android:name=".PeliculasActivity"       android:exported="false" />
-        <activity android:name=".DetallePeliculaActivity" android:exported="false" />
-        <activity android:name=".AsientosActivity"        android:exported="false" />
-        <activity android:name=".EntradaActivity"         android:exported="false" />
-        <activity android:name=".ConfiteriaActivity"      android:exported="false" />
-        <activity android:name=".PagoActivity"            android:exported="false" />
-        <activity android:name=".HistorialActivity"       android:exported="false" />
-        <activity android:name=".CinesActivity"           android:exported="false" />
-        <activity android:name=".QRScannerActivity"       android:exported="false" />
-        <activity android:name=".DetalleCompraActivity"   android:exported="false" />
-        <activity android:name=".DetalleQRActivity"       android:exported="false" />
-        <activity android:name=".MisEntradasActivity"      android:exported="false" />
+        <activity android:name=".SesionActivity"            android:exported="false" />
+        <activity android:name=".RegistroActivity"          android:exported="false" />
+        <activity android:name=".InicioActivity"            android:exported="false" />
+        <activity android:name=".PeliculasActivity"         android:exported="false" />
+        <activity android:name=".DetallePeliculaActivity"   android:exported="false" />
+        <activity android:name=".AsientosActivity"          android:exported="false" />
+        <activity android:name=".EntradaActivity"           android:exported="false" />
+        <activity android:name=".ConfiteriaActivity"        android:exported="false" />
+        <activity android:name=".PagoActivity"              android:exported="false" />
+        <activity android:name=".HistorialActivity"         android:exported="false" />
+        <activity android:name=".CinesActivity"             android:exported="false" />
+        <activity android:name=".QRScannerActivity"         android:exported="false" />
+        <activity android:name=".DetalleCompraActivity"     android:exported="false" />
+        <activity android:name=".DetalleQRActivity"         android:exported="false" />
+        <activity android:name=".MisEntradasActivity"       android:exported="false" />
         <activity android:name=".RecuperarPasswordActivity" android:exported="false" />
-
-
     </application>
 
 </manifest>
+
+

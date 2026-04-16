@@ -38,8 +38,7 @@ class DetallePeliculaActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_detalle_pelicula)
 
-        // SOLUCIÓN 1: Usamos <View> genérico para evitar el "ClassCastException" si btnAtras es un ImageView.
-        // Y usamos "?." para que no crashee si el botón no se encuentra en la vista actual.
+
         findViewById<View>(R.id.btnAtras)?.setOnClickListener {
             finish()
         }
@@ -64,7 +63,7 @@ class DetallePeliculaActivity : AppCompatActivity() {
 
         val resDirecto = if (drawableRes != 0) drawableRes else drawableMap[idPelicula] ?: 0
 
-        // SOLUCIÓN 3: Bloque seguro let para Glide y Resource
+
         ivPoster?.let { poster ->
             when {
                 resDirecto != 0 -> {

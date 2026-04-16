@@ -4,16 +4,16 @@ import android.content.ContentValues
 import android.content.Context
 import android.os.Build
 import com.idat.movietime.db.DatabaseHelper
-import com.idat.movietime.model.LoginRequest
 import com.idat.movietime.model.LoginResponse
-import com.idat.movietime.network.ApiResponse
-import com.idat.movietime.network.RetrofitClient
 import com.idat.movietime.network.SessionManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.security.MessageDigest
 
 sealed class AuthResult {
     data class Success(val data: LoginResponse) : AuthResult()
-    data class Error(val mensaje: String)        : AuthResult()
-    object SinConexion                           : AuthResult()
+    data class Error(val mensaje: String)       : AuthResult()
+    object SinConexion                          : AuthResult()
 }
 
 class AuthRepository(private val context: Context) {
@@ -21,143 +21,137 @@ class AuthRepository(private val context: Context) {
     private val sessionManager = SessionManager(context)
     private val dbHelper       = DatabaseHelper(context)
 
-    suspend fun login(documento: String, password: String): AuthResult {
-        return try {
-            // 1. Intentamos con el servidor web (API)
-            val response = RetrofitClient.api.login(
-                LoginRequest(documento = documento, password = password)
+    suspend fun login(documento: String, password: String): AuthResult = withContext(Dispatchers.IO) {
+        try {
+            val db = dbHelper.readableDatabase
+            val cursor = db.rawQuery(
+                "SELECT id_usuario, nombres, apellidos, email, rol, password_hash, estado FROM usuarios WHERE documento = ?",
+                arrayOf(documento)
             )
 
-            if (response.isSuccessful && response.body() != null) {
-                val apiResponse = response.body()!!
-                if (!apiResponse.success || apiResponse.data == null) {
-                    // El API respondió pero dice que el usuario no existe.
-                    // ¡En lugar de dar error, intentamos buscarlo localmente en SQLite!
-                    return loginLocal(documento, password)
+            if (cursor.moveToFirst()) {
+                val idUsuario = cursor.getInt(cursor.getColumnIndexOrThrow("id_usuario"))
+                val nombresDb = cursor.getString(cursor.getColumnIndexOrThrow("nombres")) ?: ""
+                val apellidosDb = cursor.getString(cursor.getColumnIndexOrThrow("apellidos")) ?: ""
+                val emailDb = cursor.getString(cursor.getColumnIndexOrThrow("email")) ?: ""
+                val rolDb = cursor.getString(cursor.getColumnIndexOrThrow("rol")) ?: "Cliente"
+                val hashDb = cursor.getString(cursor.getColumnIndexOrThrow("password_hash")) ?: ""
+                val estadoDb = cursor.getString(cursor.getColumnIndexOrThrow("estado")) ?: "Activo"
+
+                cursor.close()
+
+                if (estadoDb != "Activo") {
+                    registrarHistorialAccesoFallido(documento)
+                    return@withContext AuthResult.Error("El usuario se encuentra inactivo.")
                 }
 
-                val body = apiResponse.data
-                sessionManager.guardarSesion(
-                    token     = body.token,
-                    idUsuario = body.idUsuario,
-                    nombres   = body.nombres,
-                    rol       = body.rol,
-                    email     = body.email
-                )
+                val parts = hashDb.split(":")
+                if (parts.size == 2) {
+                    val salt = parts[0]
+                    val hashCalculado = hashSHA256ConSalt(password, salt)
 
-                registrarHistorialAcceso(body.idUsuario, "Exitoso")
-                AuthResult.Success(body)
+                    if (hashDb == hashCalculado) {
+                        val userData = LoginResponse(
+                            token = "token_local_${System.currentTimeMillis()}",
+                            idUsuario = idUsuario,
+                            nombres = nombresDb,
+                            apellidos = apellidosDb,
+                            email = emailDb,
+                            rol = rolDb
+                        )
+
+                        sessionManager.guardarSesion(
+                            token = userData.token,
+                            idUsuario = userData.idUsuario,
+                            nombres = userData.nombres,
+                            rol = userData.rol,
+                            email = userData.email
+                        )
+
+                        registrarHistorialAcceso(idUsuario, "Exitoso")
+                        return@withContext AuthResult.Success(userData)
+                    }
+                }
+
+                registrarHistorialAccesoFallido(documento)
+                return@withContext AuthResult.Error("Credenciales incorrectas")
 
             } else {
-                // El servidor arrojó un error HTTP (ej. 401 o 404). Buscamos en local.
-                loginLocal(documento, password)
+                cursor.close()
+                registrarHistorialAccesoFallido(documento)
+                return@withContext AuthResult.Error("Credenciales incorrectas")
             }
-
         } catch (e: Exception) {
-            // Sin conexión a internet o el servidor está caído → buscamos en local
-            loginLocal(documento, password)
+            e.printStackTrace()
+            return@withContext AuthResult.Error("Error al acceder a la base de datos local.")
         }
     }
 
-    // --- NUEVA FUNCIÓN PARA LOGIN CON GOOGLE ---
-    suspend fun loginConGoogle(email: String, nombres: String): AuthResult {
-        return try {
-            val requestBody = mapOf("email" to email, "nombres" to nombres)
-            val response = RetrofitClient.api.loginConGoogle(requestBody)
+    suspend fun loginConGoogle(email: String, nombres: String): AuthResult = withContext(Dispatchers.IO) {
+        try {
+            val db = dbHelper.writableDatabase
+            var idUsuario = -1
+            var nombreCompleto = nombres
+            var rolAsignado = "Cliente"
 
-            if (response.isSuccessful && response.body() != null) {
-                val apiResponse = response.body()!!
-                if (!apiResponse.success || apiResponse.data == null) {
-                    return AuthResult.Error("Fallo al autenticar con Google en el servidor")
-                }
+            val cursor = db.rawQuery(
+                "SELECT id_usuario, nombres, apellidos, rol FROM usuarios WHERE email = ?",
+                arrayOf(email)
+            )
 
-                val body = apiResponse.data
-                sessionManager.guardarSesion(
-                    token     = body.token,
-                    idUsuario = body.idUsuario,
-                    nombres   = body.nombres,
-                    rol       = body.rol,
-                    email     = body.email
-                )
-
-                registrarHistorialAcceso(body.idUsuario, "Exitoso (Google)")
-                AuthResult.Success(body)
+            if (cursor.moveToFirst()) {
+                idUsuario = cursor.getInt(cursor.getColumnIndexOrThrow("id_usuario"))
+                val nombresDb = cursor.getString(cursor.getColumnIndexOrThrow("nombres")) ?: ""
+                val apellidosDb = cursor.getString(cursor.getColumnIndexOrThrow("apellidos")) ?: ""
+                nombreCompleto = if (apellidosDb.isNotEmpty()) "$nombresDb $apellidosDb" else nombresDb
+                rolAsignado = cursor.getString(cursor.getColumnIndexOrThrow("rol")) ?: "Cliente"
             } else {
-                AuthResult.Error("Error del servidor al procesar Google Login")
+                val values = ContentValues().apply {
+                    put("nombres", nombres)
+                    put("apellidos", "")
+                    put("documento", "GOO-${System.currentTimeMillis().toString().takeLast(5)}")
+                    put("email", email)
+                    put("telefono", "")
+                    put("password_hash", hashSHA256ConSalt("google_dummy_pass", "google_salt"))
+                    put("rol", "Cliente")
+                    put("estado", "Activo")
+                }
+                idUsuario = db.insert("usuarios", null, values).toInt()
+
+                if (idUsuario == -1) {
+                    return@withContext AuthResult.Error("Error al registrar usuario localmente.")
+                }
             }
-        } catch (e: Exception) {
-            AuthResult.SinConexion
-        }
-    }
-    // -------------------------------------------
-
-    private fun loginLocal(documento: String, password: String): AuthResult {
-        val db = dbHelper.readableDatabase
-
-        val cursor = db.rawQuery(
-            """
-            SELECT u.id_usuario, u.nombres, u.apellidos, u.email,
-                   u.password_hash, r.nombre as rol
-            FROM usuarios u
-            INNER JOIN roles r ON u.id_rol = r.id_rol
-            WHERE u.documento = ?
-              AND u.estado = 'Activo'
-            """.trimIndent(),
-            arrayOf(documento)
-        )
-
-        if (!cursor.moveToFirst()) {
             cursor.close()
-            registrarHistorialAccesoFallido(documento)
-            return AuthResult.Error("Documento o contraseña incorrectos")
-        }
 
-        val idUsuario    = cursor.getInt(cursor.getColumnIndexOrThrow("id_usuario"))
-        val nombres      = cursor.getString(cursor.getColumnIndexOrThrow("nombres"))
-        val apellidos    = cursor.getString(cursor.getColumnIndexOrThrow("apellidos"))
-        val email        = cursor.getString(cursor.getColumnIndexOrThrow("email"))
-        val rol          = cursor.getString(cursor.getColumnIndexOrThrow("rol"))
-        val passwordHash = cursor.getString(cursor.getColumnIndexOrThrow("password_hash"))
-        cursor.close()
-
-        // 2. Verificar SHA-256 + salt (formato: "salt:hashSHA256")
-        val partes = passwordHash.split(":")
-        if (partes.size != 2) {
-            return AuthResult.Error("Documento o contraseña incorrectos")
-        }
-        val salt         = partes[0]
-        val hashEsperado = hashSHA256ConSalt(password, salt)
-
-        if (hashEsperado != passwordHash) {
-            registrarHistorialAccesoFallido(documento)
-            return AuthResult.Error("Documento o contraseña incorrectos")
-        }
-
-        // 3. Login exitoso
-        sessionManager.guardarSesion(
-            token     = "local_token_$idUsuario",
-            idUsuario = idUsuario,
-            nombres   = nombres,
-            rol       = rol,
-            email     = email
-        )
-        registrarHistorialAcceso(idUsuario, "Exitoso")
-
-        return AuthResult.Success(
-            LoginResponse(
-                token     = "local_token_$idUsuario",
+            val userData = LoginResponse(
+                token = "token_firebase_${System.currentTimeMillis()}",
                 idUsuario = idUsuario,
-                nombres   = nombres,
-                apellidos = apellidos,
-                email     = email,
-                rol       = rol
+                nombres = nombreCompleto,
+                apellidos = "",
+                email = email,
+                rol = rolAsignado
             )
-        )
+
+            sessionManager.guardarSesion(
+                token = userData.token,
+                idUsuario = userData.idUsuario,
+                nombres = userData.nombres,
+                rol = userData.rol,
+                email = userData.email
+            )
+
+            registrarHistorialAcceso(idUsuario, "Exitoso (Google)")
+            AuthResult.Success(userData)
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+            AuthResult.Error("Error interno procesando Google Login")
+        }
     }
 
-    // SHA-256 + salt — mismo algoritmo que RegistroActivity
     private fun hashSHA256ConSalt(password: String, salt: String): String {
-        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        val digest = MessageDigest.getInstance("SHA-256")
             .digest((salt + password).toByteArray(Charsets.UTF_8))
         return "$salt:${digest.joinToString("") { "%02x".format(it) }}"
     }
@@ -165,13 +159,19 @@ class AuthRepository(private val context: Context) {
     private fun registrarHistorialAcceso(idUsuario: Int, resultado: String) {
         try {
             val db = dbHelper.writableDatabase
+            db.execSQL("CREATE TABLE IF NOT EXISTS historial_accesos (id_acceso INTEGER PRIMARY KEY AUTOINCREMENT, id_usuario INTEGER, dispositivo TEXT, resultado TEXT)")
+
             val values = ContentValues().apply {
                 put("id_usuario",  idUsuario)
                 put("dispositivo", Build.MODEL)
                 put("resultado",   resultado)
             }
-            db.insert(DatabaseHelper.TABLE_HISTORIAL_ACCESOS, null, values)
-        } catch (e: Exception) { /* ignorar errores de log */ }
+            db.insert("historial_accesos", null, values)
+        } catch (e: Exception) { }
+    }
+
+    fun isLoggedIn(): Boolean {
+        return sessionManager.getToken() != null
     }
 
     private fun registrarHistorialAccesoFallido(documento: String) {
@@ -186,9 +186,83 @@ class AuthRepository(private val context: Context) {
                 registrarHistorialAcceso(idUsuario, "Fallido")
             }
             cursor.close()
-        } catch (e: Exception) { /* ignorar */ }
+        } catch (e: Exception) { }
     }
 
-    fun cerrarSesion() = sessionManager.cerrarSesion()
-    fun isLoggedIn()   = sessionManager.isLoggedIn()
+    fun cerrarSesion() {
+        sessionManager.cerrarSesion()
+    }
+
+    suspend fun registro(
+        nombres: String,
+        apellidos: String,
+        email: String,
+        documento: String,
+        password: String
+    ): AuthResult = withContext(Dispatchers.IO) {
+        try {
+            val db = dbHelper.writableDatabase
+
+            val cursorDoc = db.rawQuery(
+                "SELECT id_usuario FROM usuarios WHERE documento = ?",
+                arrayOf(documento)
+            )
+            if (cursorDoc.moveToFirst()) {
+                cursorDoc.close()
+                return@withContext AuthResult.Error("El documento ya está registrado.")
+            }
+            cursorDoc.close()
+
+            val cursorEmail = db.rawQuery(
+                "SELECT id_usuario FROM usuarios WHERE email = ?",
+                arrayOf(email)
+            )
+            if (cursorEmail.moveToFirst()) {
+                cursorEmail.close()
+                return@withContext AuthResult.Error("El correo ya está registrado.")
+            }
+            cursorEmail.close()
+
+            val salt = System.currentTimeMillis().toString()
+            val passwordHash = hashSHA256ConSalt(password, salt)
+
+            val values = ContentValues().apply {
+                put("nombres",       nombres)
+                put("apellidos",     apellidos)
+                put("documento",     documento)
+                put("email",         email)
+                put("password_hash", passwordHash)
+                put("rol",           "Cliente")
+                put("estado",        "Activo")
+            }
+            val idUsuario = db.insert("usuarios", null, values).toInt()
+
+            if (idUsuario == -1) {
+                return@withContext AuthResult.Error("Error al crear la cuenta.")
+            }
+
+            val userData = LoginResponse(
+                token     = "token_local_${System.currentTimeMillis()}",
+                idUsuario = idUsuario,
+                nombres   = nombres,
+                apellidos = apellidos,
+                email     = email,
+                rol       = "Cliente"
+            )
+            sessionManager.guardarSesion(
+                token     = userData.token,
+                idUsuario = userData.idUsuario,
+                nombres   = userData.nombres,
+                rol       = userData.rol,
+                email     = userData.email
+            )
+
+            registrarHistorialAcceso(idUsuario, "Registro exitoso")
+            AuthResult.Success(userData)
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+            AuthResult.Error("Error al registrar usuario.")
+        }
+    }
 }

@@ -17,13 +17,17 @@ import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 import java.util.function.Consumer;
-public class HistorialAdapter extends RecyclerView.Adapter<HistorialAdapter.VH> {
+
+
+public class EntradasAdapter extends RecyclerView.Adapter<EntradasAdapter.VH> {
+
     private static final TimeZone TZ_UTC  = TimeZone.getTimeZone("UTC");
     private static final TimeZone TZ_PERU = TimeZone.getTimeZone("America/Lima");
+
     private final List<VentaDetalle>     items;
     private final Consumer<VentaDetalle> onItemClick;
 
-    public HistorialAdapter(List<VentaDetalle> items, Consumer<VentaDetalle> onItemClick) {
+    public EntradasAdapter(List<VentaDetalle> items, Consumer<VentaDetalle> onItemClick) {
         this.items       = items;
         this.onItemClick = onItemClick;
     }
@@ -38,20 +42,29 @@ public class HistorialAdapter extends RecyclerView.Adapter<HistorialAdapter.VH> 
 
     @Override
     public void onBindViewHolder(@NonNull VH h, int position) {
-        VentaDetalle v = items.get(position);
+        VentaDetalle venta = items.get(position);
 
+        String estadoIngreso = "Pendiente";
+        if (venta.tieneEntradas()) {
+            String ei = venta.entradas.get(0).estadoIngreso;
+            if (ei != null && !ei.isEmpty()) estadoIngreso = ei;
+        }
 
-        if ("Anulada".equals(v.estadoVenta)) {
-            h.tvHistEstado.setText("Anulada");
-            h.tvHistEstado.setTextColor(0xFFF44336);
-        } else {
-            h.tvHistEstado.setText("Completada");
-            h.tvHistEstado.setTextColor(0xFF4CAF50);
+        switch (estadoIngreso) {
+            case "Validado":
+                h.tvHistEstado.setText(" Usado");
+                h.tvHistEstado.setTextColor(0xFF4CAF50);
+                break;
+            case "Pendiente":
+            default:
+                h.tvHistEstado.setText("🎟 Pendiente");
+                h.tvHistEstado.setTextColor(0xFFFF9800);
+                break;
         }
 
 
-        if (v.tieneEntradas()) {
-            VentaDetalle.EntradaItem primera = v.entradas.get(0);
+        if (venta.tieneEntradas()) {
+            VentaDetalle.EntradaItem primera = venta.entradas.get(0);
 
             String titulo = primera.tituloPelicula != null ? primera.tituloPelicula : "Entrada";
             if (primera.formato != null && !primera.formato.isEmpty())
@@ -65,40 +78,28 @@ public class HistorialAdapter extends RecyclerView.Adapter<HistorialAdapter.VH> 
                 butacaInfo += "  ·  " + primera.nombreSala;
             if (primera.tipoSala != null && !primera.tipoSala.isEmpty())
                 butacaInfo += "  (" + primera.tipoSala + ")";
-            if (v.entradas.size() > 1)
-                butacaInfo += "  ·  " + v.entradas.size() + " entradas";
+            if (venta.entradas.size() > 1)
+                butacaInfo += "  ·  " + venta.entradas.size() + " entradas";
             h.tvHistButaca.setText(butacaInfo);
 
-        } else if (v.tieneConfiteria()) {
-            h.tvHistTitulo.setText("🍿  Confitería");
-            h.tvHistFecha.setText(formatFechaCorta(v.fechaVenta));
-
-            // Listar nombres de productos (máx. 2 + "y N más")
-            StringBuilder sb = new StringBuilder();
-            int max = Math.min(v.productosConfiteria.size(), 2);
-            for (int i = 0; i < max; i++) {
-                if (i > 0) sb.append(", ");
-                sb.append(v.productosConfiteria.get(i).nombreProducto);
-            }
-            if (v.productosConfiteria.size() > 2)
-                sb.append(" y ").append(v.productosConfiteria.size() - 2).append(" más");
-            h.tvHistButaca.setText(sb.toString());
-
         } else {
-            h.tvHistTitulo.setText("Compra");
-            h.tvHistFecha.setText(formatFechaCorta(v.fechaVenta));
+
+            h.tvHistTitulo.setText("Entrada");
+            h.tvHistFecha.setText(formatFechaCorta(venta.fechaVenta));
             h.tvHistButaca.setText("—");
         }
 
+        String codigoQR = "—";
+        if (venta.tieneEntradas()) {
+            String qr = venta.entradas.get(0).codigoQR;
+            if (qr != null && !qr.isEmpty()) codigoQR = qr;
+        }
+        h.tvHistMetodo.setText("🔑 " + codigoQR);
 
-        String metodo = (v.metodoPago != null ? v.metodoPago : "—")
-                + "  ·  " + (v.tipoComprobante != null ? v.tipoComprobante : "—");
-        h.tvHistMetodo.setText(metodo);
 
+        h.tvHistTotal.setText("S/ " + String.format("%.2f", venta.total));
 
-        h.tvHistTotal.setText("S/ " + String.format("%.2f", v.total));
-
-        h.itemView.setOnClickListener(view -> onItemClick.accept(v));
+        h.itemView.setOnClickListener(view -> onItemClick.accept(venta));
     }
 
     @Override

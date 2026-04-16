@@ -5,7 +5,7 @@ import com.google.gson.annotations.SerializedName
 data class ProductoWeb(
     @SerializedName("idProducto")      val idProducto:       Int    = 0,
     @SerializedName("nombre")          val nombre:           String = "",
-    @SerializedName("precio")          val precio:           Double = 0.0,
+    @SerializedName("preio")          val precio:           Double = 0.0,
     @SerializedName("stockActual")     val stockActual:      Int    = 0,
     @SerializedName("stockMinimo")     val stockMinimo:      Int    = 0,
     @SerializedName("estado")          val estado:           String = "Activo",

@@ -17,7 +17,6 @@ class AuthInterceptor(private val sessionManager: SessionManager?) : Interceptor
         } else {
             original
         }
-
         return chain.proceed(request)
     }
 }

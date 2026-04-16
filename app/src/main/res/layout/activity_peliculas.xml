@@ -7,7 +7,7 @@
     android:layout_height="match_parent"
     android:fitsSystemWindows="true">
 
-    <!-- CONTENIDO PRINCIPAL -->
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -29,7 +29,7 @@
             android:textStyle="bold"
             android:background="#FFFFFF" />
 
-        <!-- ✅ TABS — Cartelera / Próximamente / Ópera/Preventa -->
+
         <com.google.android.material.tabs.TabLayout
             android:id="@+id/tabLayout"
             android:layout_width="match_parent"
@@ -40,14 +40,14 @@
             app:tabIndicatorColor="#1A1A2E"
             app:tabMode="scrollable" />
 
-        <!-- ✅ ViewPager para las tabs — SIN banner aquí -->
+
         <androidx.viewpager2.widget.ViewPager2
             android:id="@+id/viewPager"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1" />
 
-        <!-- BOTTOM NAV — igual en todas las pantallas -->
+
         <com.google.android.material.bottomnavigation.BottomNavigationView
             android:id="@+id/bottomNavigation"
             android:layout_width="match_parent"

@@ -4,7 +4,6 @@ import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.os.Bundle
-import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -22,7 +21,6 @@ import kotlinx.coroutines.launch
 import com.idat.movietime.network.RetrofitClient
 
 
-// Este modelo leerá la información que viene de tu Spring Boot
 data class ProductoItem(
     val id:        Int,
     val nombre:    String,
@@ -30,6 +28,7 @@ data class ProductoItem(
     val imagenRes: Int,
     var cantidad:  Int = 0
 )
+
 class ConfiteriaActivity : AppCompatActivity() {
 
     private lateinit var recyclerProductos: RecyclerView
@@ -59,9 +58,9 @@ class ConfiteriaActivity : AppCompatActivity() {
         ProductoItem(6, "POP CORN\nDULCE CHICO",    13.0, R.drawable.popcorn_sl_ch)
     )
     private val listaCombos = mutableListOf(
-        ProductoItem(7,  "COMBO\nFAMILIAR", 45.0, R.drawable.combo1),
-        ProductoItem(8,  "COMBO\nDÚO",      35.0, R.drawable.combo2),
-        ProductoItem(9,  "COMBO\nHOT DOG",  28.0, R.drawable.combo3),
+        ProductoItem(7,  "COMBO\nFAMILIAR",      45.0, R.drawable.combo1),
+        ProductoItem(8,  "COMBO\nDÚO",           35.0, R.drawable.combo2),
+        ProductoItem(9,  "COMBO\nHOT DOG",       28.0, R.drawable.combo3),
         ProductoItem(10, "COMBO\nPERSONAL DULCE", 22.0, R.drawable.combo4)
     )
     private val listaSandwich = mutableListOf(
@@ -93,7 +92,6 @@ class ConfiteriaActivity : AppCompatActivity() {
         clasif           = intent.getStringExtra("clasificacion")  ?: ""
         idFuncion        = intent.getIntExtra("id_funcion",        0)
 
-        // btnAtras (flujo de compra)
         findViewById<TextView>(R.id.btnAtras)?.setOnClickListener { finish() }
 
         adapter = ProductoAdapter(productosActuales) { actualizarTotal() }
@@ -104,36 +102,35 @@ class ConfiteriaActivity : AppCompatActivity() {
         setupDrawer()
         actualizarTotal()
         descargarPreciosReales()
+
         btnSiguiente.setOnClickListener {
             val totalConf = todosProductos().sumOf { it.precio * it.cantidad }
             val granTotal = totalEntradas + totalConf
-            startActivity(Intent(this, PagoActivity::class.java).apply {
-                putExtra("butacas",           butacas)
-                putExtra("cantidad_entradas", cantidadEntradas)
-                putExtra("total_entradas",    totalEntradas)
-                putExtra("total_confiteria",  totalConf)
-                putExtra("gran_total",        granTotal)   // ← total real para PagoActivity
-                putExtra("titulo",            titulo)
-                putExtra("sede",              sede)
-                putExtra("hora",              hora)
-                putExtra("sala",              sala)
-                putExtra("fecha",             fecha)
-                putExtra("duracion_min",      duracion)
-                putExtra("clasificacion",     clasif)
-                putExtra("id_funcion",        idFuncion)
-            })
+            val intent = Intent(this, PagoActivity::class.java)
+            intent.putExtra("butacas",           butacas)
+            intent.putExtra("cantidad_entradas", cantidadEntradas)
+            intent.putExtra("total_entradas",    totalEntradas)
+            intent.putExtra("total_confiteria",  totalConf)
+            intent.putExtra("gran_total",        granTotal)
+            intent.putExtra("titulo",            titulo)
+            intent.putExtra("sede",              sede)
+            intent.putExtra("hora",              hora)
+            intent.putExtra("sala",              sala)
+            intent.putExtra("fecha",             fecha)
+            intent.putExtra("duracion_min",      duracion)
+            intent.putExtra("clasificacion",     clasif)
+            intent.putExtra("id_funcion",        idFuncion)
+            startActivity(intent)
         }
     }
+
     private fun todosProductos() = listaPopcorn + listaCombos + listaSandwich
 
     private fun actualizarTotal() {
         val totalConf = todosProductos().sumOf { it.precio * it.cantidad }
         val granTotal = totalEntradas + totalConf
         tvTotal.text = "Total: S/ ${"%.2f".format(granTotal)}"
-        // Confitería es opcional → btnSiguiente siempre habilitado
-        btnSiguiente.backgroundTintList = ColorStateList.valueOf(
-            Color.parseColor("#1A1A2E")
-        )
+        btnSiguiente.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#1A1A2E"))
         btnSiguiente.isEnabled = true
     }
 
@@ -162,60 +159,44 @@ class ConfiteriaActivity : AppCompatActivity() {
             if (drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.closeDrawer(GravityCompat.START)
             else drawerLayout.openDrawer(GravityCompat.START)
         }
-        findViewById<View>(R.id.navCartelera)?.setOnClickListener   { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, PeliculasActivity::class.java)) }
-        findViewById<View>(R.id.navEntradas)?.setOnClickListener    { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, HistorialActivity::class.java)) }
-        findViewById<View>(R.id.navConfiteria)?.setOnClickListener  { drawerLayout.closeDrawer(GravityCompat.START) }
-        findViewById<View>(R.id.navHistorial)?.setOnClickListener   { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, HistorialActivity::class.java)) }
+        findViewById<View>(R.id.navCartelera)?.setOnClickListener  { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, PeliculasActivity::class.java)) }
+        findViewById<View>(R.id.navEntradas)?.setOnClickListener   { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, HistorialActivity::class.java)) }
+        findViewById<View>(R.id.navConfiteria)?.setOnClickListener { drawerLayout.closeDrawer(GravityCompat.START) }
+        findViewById<View>(R.id.navHistorial)?.setOnClickListener  { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, HistorialActivity::class.java)) }
         findViewById<View>(R.id.navQR)?.setOnClickListener         { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, QRScannerActivity::class.java)) }
         findViewById<View>(R.id.navCerrarSesion)?.setOnClickListener {
             drawerLayout.closeDrawer(GravityCompat.START)
-
             com.idat.movietime.network.SessionManager(this).cerrarSesion()
 
-            startActivity(Intent(this, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            })
+            val intent = Intent(this, SesionActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
         }
     }
 
-    // ──────────────────────────────────────────────────────────────
-    // LA MAGIA: DESCARGAR PRECIOS EN TIEMPO REAL DESDE MYSQL
-    // ──────────────────────────────────────────────────────────────
     private fun descargarPreciosReales() {
         lifecycleScope.launch {
             try {
-                // 1. Usamos la ruta que YA EXISTÍA en tu MovieTimeApi.kt
                 val response = RetrofitClient.api.getProductosActivos()
-
                 if (response.isSuccessful && response.body()?.success == true) {
-
-                    // Kotlin entiende esto perfectamente porque es un Map nativo
                     val listaMapas = response.body()?.data
-
                     if (listaMapas != null) {
                         for (mapa in listaMapas) {
-                            // Extraemos los datos (Retrofit convierte los JSON numbers a Double)
                             val idDouble = (mapa["idProducto"] ?: mapa["id_producto"]) as? Double
                             val precioNuevo = mapa["precio"] as? Double
-
                             if (idDouble != null && precioNuevo != null) {
                                 val id = idDouble.toInt()
-
-                                // Buscamos en tus listas locales y actualizamos
                                 val itemLocal = todosProductos().find { it.id == id }
                                 if (itemLocal != null) {
                                     itemLocal.precio = precioNuevo
                                 }
                             }
                         }
-
-                        // 3. Refrescamos la pantalla
                         adapter.notifyDataSetChanged()
                         actualizarTotal()
                     }
                 }
             } catch (e: Exception) {
-                // Si falla el internet, se mantienen los precios de emergencia
                 e.printStackTrace()
             }
         }
@@ -253,6 +234,7 @@ class ConfiteriaActivity : AppCompatActivity() {
                 item.cantidad++; h.tvCantidad.text = item.cantidad.toString(); onCambio()
             }
         }
+
         override fun getItemCount() = items.size
     }
 }

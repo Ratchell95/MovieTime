@@ -16,8 +16,7 @@ public class VentaDetalle {
 
     public String tituloPeliculaAux;
     public String imagenUrlAux;
-    public int    idPeliculaAux; // ✅ CORREGIDO: Ahora está en la clase principal
-
+    public int    idPeliculaAux;
     public List<EntradaItem> entradas = new ArrayList<>();
     public String tipoButaca;
 

@@ -73,7 +73,6 @@ class AsientosActivity : AppCompatActivity() {
         "A" to (1..5).toList()
     )
 
-    // Asientos ocupados permanentemente para pruebas
     private val ocupadas  = setOf("K8","K9","E4","E5","M13","M14")
     private val GRID_COLS = 18
 
@@ -81,7 +80,7 @@ class AsientosActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_asientos)
 
-        // Vincular vistas
+
         tvTituloAsiento   = findViewById(R.id.tvTituloAsiento)
         tvDuracionAsiento = findViewById(R.id.tvDuracionAsiento)
         tvSedeAsiento     = findViewById(R.id.tvSedeAsiento)
@@ -94,7 +93,7 @@ class AsientosActivity : AppCompatActivity() {
         btnContinuar      = findViewById(R.id.btnContinuar)
         ivPosterAsiento   = findViewById(R.id.ivPosterAsiento)
 
-        // Recuperar extras
+
         idPeliculaExtra  = intent.getIntExtra("id_pelicula",   0)
         tituloExtra      = intent.getStringExtra("titulo")        ?: ""
         duracionExtra    = intent.getIntExtra("duracion_min",    0)
@@ -110,7 +109,7 @@ class AsientosActivity : AppCompatActivity() {
         val bloqueadasBD = dbHelper.getButacasBloqueadasActivas(idFuncionExtra)
         val compradasBD = dbHelper.getButacasOcupadasPermanentes(idFuncionExtra)
 
-        // Poblar info
+
         tvTituloAsiento.text   = "$tituloExtra (DOB)"
         tvDuracionAsiento.text = "${duracionExtra/60} hr ${duracionExtra%60} min | $clasificExtra"
         tvSedeAsiento.text     = sedeExtra
@@ -130,7 +129,7 @@ class AsientosActivity : AppCompatActivity() {
         setupAsientos(bloqueadasBD, compradasBD)
 
         btnContinuar.setOnClickListener {
-            // ✅ REGISTRAR BLOQUEO TEMPORAL EN LA BD ANTES DE SALIR
+
             dbHelper.bloquearButacasTemporales(butacasSeleccionadas, idFuncionExtra)
 
             timer?.cancel()
@@ -202,7 +201,7 @@ class AsientosActivity : AppCompatActivity() {
 
     private fun iniciarCronometro() {
         timer?.cancel()
-        // ✅ CRONÓMETRO EXACTO DE 1 MINUTO (60,000 ms)
+
         timer = object : CountDownTimer(60000L, 1000) {
             override fun onTick(ms: Long) {
                 val s = ms / 1000

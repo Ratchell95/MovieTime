@@ -25,9 +25,9 @@ object RetrofitClient {
         OkHttpClient.Builder()
             .addInterceptor(AuthInterceptor(sessionManager))
             .addInterceptor(loggingInterceptor)
-            .connectTimeout(30, TimeUnit.SECONDS) // <-- CAMBIAR A 30
-            .readTimeout(30, TimeUnit.SECONDS)    // <-- CAMBIAR A 30
-            .writeTimeout(30, TimeUnit.SECONDS)   // <-- CAMBIAR A 30
+            .connectTimeout(3, TimeUnit.SECONDS)
+            .readTimeout(5, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
             .build()
     }
     private val retrofit: Retrofit by lazy {

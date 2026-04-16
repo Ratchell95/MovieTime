@@ -98,6 +98,12 @@ class QRScannerActivity : AppCompatActivity() {
     }
 
     private fun procesarQR(contenido: String) {
+        val contenidoLimpio = try {
+            val bytes = contenido.toByteArray(Charsets.ISO_8859_1)
+            String(bytes, Charsets.UTF_8)
+        } catch (e: Exception) {
+            contenido
+        }
         val partes = contenido.split("|")
         val intent = Intent(this, DetalleQRActivity::class.java)
 

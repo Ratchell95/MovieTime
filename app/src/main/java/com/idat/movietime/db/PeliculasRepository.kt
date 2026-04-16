@@ -41,12 +41,7 @@ class PeliculasRepository(private val context: Context) {
             lista
         }
 
-    /**
-     * Inserta una película en la BD.
-     * También es suspend para no bloquear el UI thread.
-     *
-     * Retorna el rowId de la fila insertada, o -1 si hubo conflicto/error.
-     */
+
     suspend fun insertarPelicula(p: Pelicula): Long =
         withContext(Dispatchers.IO) {
             val values = ContentValues().apply {
@@ -59,8 +54,9 @@ class PeliculasRepository(private val context: Context) {
                 put("imagen_url",    p.imagenUrl)
                 put("estado",        p.estado)
             }
+            "peliculas"
             dbHelper.writableDatabase.insertWithOnConflict(
-                DatabaseHelper.TABLE_PELICULAS,
+                "peliculas",
                 null,
                 values,
                 SQLiteDatabase.CONFLICT_IGNORE

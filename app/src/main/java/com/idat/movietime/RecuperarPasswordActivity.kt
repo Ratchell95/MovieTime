@@ -13,12 +13,12 @@ import com.idat.movietime.db.DatabaseHelper
 
 class RecuperarPasswordActivity : AppCompatActivity() {
 
-    // Contenedores de los pasos
+
     private lateinit var layoutPaso1: LinearLayout
     private lateinit var layoutPaso2: LinearLayout
     private lateinit var layoutPaso3: LinearLayout
 
-    // Inputs
+
     private lateinit var etDocumento:   TextInputEditText
     private lateinit var etCodigo:      TextInputEditText
     private lateinit var etNuevaPass:   TextInputEditText
@@ -30,7 +30,6 @@ class RecuperarPasswordActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_recuperar_password)
 
-        // Inicializar vistas
         layoutPaso1 = findViewById(R.id.layoutPaso1)
         layoutPaso2 = findViewById(R.id.layoutPaso2)
         layoutPaso3 = findViewById(R.id.layoutPaso3)
@@ -47,7 +46,6 @@ class RecuperarPasswordActivity : AppCompatActivity() {
 
         btnAtras.setOnClickListener { finish() }
 
-        // ── PASO 1: Enviar Documento ──────────────────────────────
         btnEnviar.setOnClickListener {
             documentoIngresado = etDocumento.text.toString().trim()
             if (documentoIngresado.length < 7) {
@@ -55,15 +53,14 @@ class RecuperarPasswordActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // 1. Verificamos si el usuario existe en la base de datos local SQLite
             var usuarioExiste = false
             try {
                 val dbHelper = com.idat.movietime.db.DatabaseHelper(this)
                 val db = dbHelper.readableDatabase
-                // Hacemos una consulta rápida buscando el documento
+
                 val cursor = db.rawQuery("SELECT id_usuario FROM usuarios WHERE documento = ?", arrayOf(documentoIngresado))
 
-                // Si moveToFirst() es true, significa que encontró al menos un registro
+
                 if (cursor.moveToFirst()) {
                     usuarioExiste = true
                 }
@@ -73,24 +70,23 @@ class RecuperarPasswordActivity : AppCompatActivity() {
                 e.printStackTrace()
             }
 
-            // 2. Evaluamos el resultado
+
             if (usuarioExiste) {
-                // El usuario SÍ existe. Pasamos al Paso 2.
+
                 layoutPaso1.visibility = View.GONE
                 layoutPaso2.visibility = View.VISIBLE
                 Toast.makeText(this, "Código enviado a tu correo", Toast.LENGTH_SHORT).show()
             } else {
-                // El usuario NO existe. Mostramos el error y detenemos el flujo.
+
                 etDocumento.error = "Usuario no registrado"
                 Toast.makeText(this, "No existe ninguna cuenta con ese documento", Toast.LENGTH_LONG).show()
             }
         }
 
-        // ── PASO 2: Verificar Código ──────────────────────────────
+
         btnVerificar.setOnClickListener {
             val codigo = etCodigo.text.toString().trim()
 
-            // LA MAGIA DEL SIMULADOR ESTÁ AQUÍ
             if (codigo == "1234") {
                 layoutPaso2.visibility = View.GONE
                 layoutPaso3.visibility = View.VISIBLE
@@ -99,7 +95,6 @@ class RecuperarPasswordActivity : AppCompatActivity() {
             }
         }
 
-        // ── PASO 3: Guardar Nueva Contraseña ──────────────────────
         btnGuardar.setOnClickListener {
             val nuevaPass = etNuevaPass.text.toString()
             val confirma  = etConfirma.text.toString()
@@ -113,11 +108,11 @@ class RecuperarPasswordActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // 1. Encriptamos la nueva contraseña para mantener la seguridad
+
             val nuevoSalt = generarSalt()
             val nuevoHash = hashSHA256ConSalt(nuevaPass, nuevoSalt)
 
-            // 2. Actualizamos la tabla usuarios en la base de datos local SQLite
+
             try {
                 val dbHelper = DatabaseHelper(this)
                 val db = dbHelper.writableDatabase
@@ -125,7 +120,7 @@ class RecuperarPasswordActivity : AppCompatActivity() {
                     put("password_hash", nuevoHash)
                 }
 
-                // Actualizamos específicamente al usuario que coincida con el documento
+
                 db.update("usuarios", valores, "documento = ?", arrayOf(documentoIngresado))
                 db.close()
             } catch (e: Exception) {

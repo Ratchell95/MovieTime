@@ -14,6 +14,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal">
 
+        <!-- ① PÓSTER DE LA PELÍCULA -->
         <ImageView
             android:id="@+id/ivPosterTicket"
             android:layout_width="90dp"
@@ -21,6 +22,7 @@
             android:scaleType="centerCrop"
             android:src="@drawable/ic_pelicula_placeholder" />
 
+        <!-- ② INFO CENTRAL -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
@@ -34,7 +36,7 @@
                 android:layout_height="wrap_content"
                 android:text="TÍTULO PELÍCULA"
                 android:textColor="#FFFFFF"
-                android:textSize="16sp"
+                android:textSize="15sp"
                 android:textStyle="bold"
                 android:maxLines="2"
                 android:ellipsize="end"/>
@@ -53,12 +55,16 @@
                 android:id="@+id/tvInfoTicket"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Sala 05 | Butacas: J8, J9"
+                android:text="Sala 05  ·  Butacas: J8, J9"
                 android:textColor="#AAAAAA"
                 android:textSize="12sp"
                 android:layout_marginTop="4dp"/>
 
-            <View android:layout_height="0dp" android:layout_weight="1" android:layout_width="0dp"/>
+            <!-- Espaciador para empujar el estado hacia abajo -->
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1"/>
 
             <TextView
                 android:id="@+id/tvEstadoTicket"
@@ -71,12 +77,16 @@
                 android:layout_marginTop="8dp"/>
         </LinearLayout>
 
+        <!-- ③ BOTÓN VER QR (columna derecha) -->
         <LinearLayout
+            android:id="@+id/btnVerQR"
             android:layout_width="55dp"
             android:layout_height="match_parent"
             android:orientation="vertical"
             android:background="#0D0D1A"
-            android:gravity="center">
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
 
             <ImageView
                 android:layout_width="24dp"
@@ -93,5 +103,6 @@
                 android:textSize="10sp"
                 android:layout_marginTop="6dp"/>
         </LinearLayout>
+
     </LinearLayout>
 </androidx.cardview.widget.CardView>

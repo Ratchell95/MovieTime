@@ -3,6 +3,7 @@ package com.idat.movietime
 import android.content.Intent
 import android.os.Bundle
 import android.os.CountDownTimer
+import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
@@ -43,9 +44,9 @@ class EntradaActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_entrada)
 
+
         butacas         = intent.getStringExtra("butacas")           ?: ""
-        cantidadButacas = intent.getIntExtra("cantidad_entradas",     1)
-            .let { if (it <= 0) 1 else it }
+        cantidadButacas = intent.getIntExtra("cantidad_entradas",     1).let { if (it <= 0) 1 else it }
         titulo          = intent.getStringExtra("titulo")            ?: ""
         duracion        = intent.getIntExtra("duracion_min",          0)
         clasif          = intent.getStringExtra("clasificacion")      ?: ""
@@ -54,6 +55,7 @@ class EntradaActivity : AppCompatActivity() {
         sala            = intent.getStringExtra("sala")              ?: ""
         fecha           = intent.getStringExtra("fecha")             ?: ""
         idFuncion       = intent.getIntExtra("id_funcion",            0)
+
 
         tvCronometro  = findViewById(R.id.tvCronometro)
         tvTotal       = findViewById(R.id.tvTotal)
@@ -69,35 +71,43 @@ class EntradaActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.tvHoraEntrada).text      = hora
         findViewById<TextView>(R.id.tvSalaEntrada).text      = sala
 
-
         val tvIndicacion = findViewById<TextView>(R.id.tvTotal)
         tvIndicacion?.text = "Asigna ${cantidadButacas} entrada(s) — Total: S/ 0.00"
 
-        findViewById<TextView>(R.id.btnAtras)?.setOnClickListener { finish() }
+        findViewById<View>(R.id.btnAtras)?.setOnClickListener { finish() }
 
-        // ── Validar código promo Yape ────────────────────────────────
         findViewById<Button>(R.id.btnValidarPromo)?.setOnClickListener {
-            val codigo = findViewById<com.google.android.material.textfield.TextInputEditText>(
-                R.id.etCodigoPromo)?.text?.toString()?.trim() ?: ""
-            if (codigo.isEmpty()) {
+            val codigoIngresado = findViewById<com.google.android.material.textfield.TextInputEditText>(
+                R.id.etCodigoPromo)?.text?.toString()?.trim()?.uppercase() ?: ""
+
+            if (codigoIngresado.isEmpty()) {
                 Toast.makeText(this, "Ingresa un código de promoción", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            val totalActual = cantAdulto * precioAdulto + cantInfantil * precioInfantil + cantMayor * precioMayor
-            val dbHelper = com.idat.movietime.db.DatabaseHelper(this)
-            val descuento = dbHelper.aplicarPromocion(codigo, totalActual)
-            dbHelper.close()
-            if (descuento < 0) {
-                Toast.makeText(this, "Código inválido o expirado", Toast.LENGTH_SHORT).show()
-            } else {
-                descuentoPromo = descuento
-                Toast.makeText(this, "Promo aplicada: -S/${"%.2f".format(descuento)}", Toast.LENGTH_SHORT).show()
+
+            val subtotalActual = (cantAdulto * precioAdulto) + (cantInfantil * precioInfantil) + (cantMayor * precioMayor)
+
+            if (subtotalActual == 0.0) {
+                Toast.makeText(this, "Selecciona entradas antes de aplicar el código", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+
+            if (codigoIngresado == "PROMOYAPE") {
+
+                descuentoPromo = 5.00
+                Toast.makeText(this, "Promo aplicada: -S/${"%.2f".format(descuentoPromo)}", Toast.LENGTH_SHORT).show()
                 actualizarTotal()
+            } else {
+                Toast.makeText(this, "Código inválido o expirado", Toast.LENGTH_SHORT).show()
             }
         }
+
         setupContadores()
         iniciarCronometro()
         actualizarTotal()
+
+
         btnSiguiente.setOnClickListener {
             val totalAsignado = cantAdulto + cantInfantil + cantMayor
             if (totalAsignado == 0) {
@@ -105,14 +115,14 @@ class EntradaActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
             if (totalAsignado != cantidadButacas) {
-                Toast.makeText(this,
-                    "Debes asignar exactamente $cantidadButacas entrada(s) para tus butacas",
-                    Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Debes asignar exactamente $cantidadButacas entrada(s) para tus butacas", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
+
             timer?.cancel()
-            val subtotal = cantAdulto * precioAdulto + cantInfantil * precioInfantil + cantMayor * precioMayor
+            val subtotal = (cantAdulto * precioAdulto) + (cantInfantil * precioInfantil) + (cantMayor * precioMayor)
             val total    = maxOf(0.0, subtotal - descuentoPromo)
+
             startActivity(Intent(this, ConfiteriaActivity::class.java).apply {
                 putExtra("butacas",           butacas)
                 putExtra("cantidad_entradas", cantidadButacas)
@@ -171,16 +181,19 @@ class EntradaActivity : AppCompatActivity() {
         val subInfantil = cantInfantil * precioInfantil
         val subMayor    = cantMayor    * precioMayor
         val subtotal    = subAdulto + subInfantil + subMayor
-        val total       = maxOf(0.0, subtotal - descuentoPromo)
+
+
+        val total = maxOf(0.0, subtotal - descuentoPromo)
 
         tvSubAdulto.text   = "= S/${"%.2f".format(subAdulto)}"
         tvSubInfantil.text = "= S/${"%.2f".format(subInfantil)}"
         tvSubMayor.text    = "= S/${"%.2f".format(subMayor)}"
 
-        tvTotal.text = if (descuentoPromo > 0)
-            "Asigna $cantidadButacas entrada(s) — Total: S/ ${"%.2f".format(total)} (-S/${"%.2f".format(descuentoPromo)})"
-        else
-            "Asigna $cantidadButacas entrada(s) — Total: S/ ${"%.2f".format(total)}"
+        if (descuentoPromo > 0 && subtotal > 0) {
+            tvTotal.text = "Asigna $cantidadButacas entrada(s) — Total: S/ ${"%.2f".format(total)} (-S/${"%.2f".format(descuentoPromo)})"
+        } else {
+            tvTotal.text = "Asigna $cantidadButacas entrada(s) — Total: S/ ${"%.2f".format(subtotal)}"
+        }
 
         val asignadas = cantAdulto + cantInfantil + cantMayor
         btnSiguiente.isEnabled = asignadas == cantidadButacas
@@ -191,10 +204,11 @@ class EntradaActivity : AppCompatActivity() {
     }
 
     private fun iniciarCronometro() {
-        tvCronometro.visibility = android.view.View.VISIBLE
+        tvCronometro.visibility = View.VISIBLE
         timer = object : CountDownTimer(10 * 60 * 1000L, 1000) {
             override fun onTick(ms: Long) {
-                val m = ms / 60000; val s = (ms % 60000) / 1000
+                val m = ms / 60000
+                val s = (ms % 60000) / 1000
                 tvCronometro.text = "⏱ %02d:%02d".format(m, s)
             }
             override fun onFinish() {
@@ -207,5 +221,8 @@ class EntradaActivity : AppCompatActivity() {
         }.start()
     }
 
-    override fun onDestroy() { super.onDestroy(); timer?.cancel() }
+    override fun onDestroy() {
+        super.onDestroy()
+        timer?.cancel()
+    }
 }

@@ -12,19 +12,17 @@ object BottomNavHelper {
         val bottomNav = activity.findViewById<BottomNavigationView>(R.id.bottomNavigation)
             ?: return
 
-        // 1. Marcar ítem activo
+
         bottomNav.selectedItemId = itemActivo
 
-        // 2. Poner el título del ítem activo en el toolbar
-        //    Lo leemos directamente del menú para no duplicar los nombres
+
         val titulo = bottomNav.menu.findItem(itemActivo)?.title?.toString() ?: ""
         activity.findViewById<TextView>(R.id.tvToolbarTitulo)?.text = titulo
 
-        // 3. Navegar al tocar otro ítem y actualizar el título
         bottomNav.setOnItemSelectedListener { item ->
             if (item.itemId == itemActivo) return@setOnItemSelectedListener true
 
-            // Actualizar título antes de navegar
+
             activity.findViewById<TextView>(R.id.tvToolbarTitulo)?.text =
                 item.title?.toString() ?: ""
 

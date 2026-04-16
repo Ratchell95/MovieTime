@@ -3,7 +3,6 @@ package com.idat.movietime
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
@@ -69,24 +68,22 @@ class CinesActivity : AppCompatActivity() {
         }
     }
 
-
     private fun setupDrawer() {
         findViewById<ImageButton>(R.id.btnMenu)?.setOnClickListener {
-            if (drawerLayout.isDrawerOpen(Gravity.START)) drawerLayout.closeDrawer(Gravity.START)
-            else drawerLayout.openDrawer(Gravity.START)
+            if (drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.closeDrawer(GravityCompat.START)
+            else drawerLayout.openDrawer(GravityCompat.START)
         }
-        findViewById<View>(R.id.navCartelera)?.setOnClickListener   { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, PeliculasActivity::class.java)) }
-        findViewById<View>(R.id.navEntradas)?.setOnClickListener    { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, HistorialActivity::class.java)) }
-        findViewById<View>(R.id.navConfiteria)?.setOnClickListener  { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, ConfiteriaActivity::class.java)) }
-        findViewById<View>(R.id.navHistorial)?.setOnClickListener   { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, HistorialActivity::class.java)) }
-        findViewById<View>(R.id.navQR)?.setOnClickListener         { drawerLayout.closeDrawer(Gravity.START); startActivity(Intent(this, QRScannerActivity::class.java)) }
+        findViewById<View>(R.id.navCartelera)?.setOnClickListener   { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, PeliculasActivity::class.java)) }
+        findViewById<View>(R.id.navEntradas)?.setOnClickListener    { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, HistorialActivity::class.java)) }
+        findViewById<View>(R.id.navConfiteria)?.setOnClickListener  { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, ConfiteriaActivity::class.java)) }
+        findViewById<View>(R.id.navHistorial)?.setOnClickListener   { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, HistorialActivity::class.java)) }
+        findViewById<View>(R.id.navQR)?.setOnClickListener          { drawerLayout.closeDrawer(GravityCompat.START); startActivity(Intent(this, QRScannerActivity::class.java)) }
         findViewById<View>(R.id.navCerrarSesion)?.setOnClickListener {
             drawerLayout.closeDrawer(GravityCompat.START)
-
             com.idat.movietime.network.SessionManager(this).cerrarSesion()
-            startActivity(Intent(this, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            })
+            val intent = Intent(this, SesionActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
         }
     }
 
@@ -109,19 +106,31 @@ class CinesActivity : AppCompatActivity() {
             h.tvNombre.text  = sede.nombre
             h.tvDir.text     = sede.direccion
             h.tvFormato.text = sede.formato
+
             if (sede.imagenRes != 0) {
                 h.ivImagen.setImageResource(sede.imagenRes)
                 h.ivImagen.scaleType = ImageView.ScaleType.CENTER_CROP
             } else {
                 h.ivImagen.setImageResource(R.mipmap.ic_icono)
             }
+
             h.btnMapa.setOnClickListener {
-                val uri = Uri.parse("geo:${sede.latitud},${sede.longitud}?q=${Uri.encode(sede.nombre.replace("\n"," "))}")
-                val gmaps = Intent(Intent.ACTION_VIEW, uri).apply { setPackage("com.google.android.apps.maps") }
-                if (gmaps.resolveActivity(packageManager) != null) startActivity(gmaps)
-                else startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://maps.google.com/?q=${sede.latitud},${sede.longitud}")))
+                val uri = Uri.parse("geo:${sede.latitud},${sede.longitud}?q=${Uri.encode(sede.nombre.replace("\n", " "))}")
+                val gmaps = Intent(Intent.ACTION_VIEW, uri)
+                gmaps.setPackage("com.google.android.apps.maps")
+
+                if (gmaps.resolveActivity(this@CinesActivity.packageManager) != null) {
+                    this@CinesActivity.startActivity(gmaps)
+                } else {
+                    val webIntent = Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse("https://maps.google.com/?q=${sede.latitud},${sede.longitud}")
+                    )
+                    this@CinesActivity.startActivity(webIntent)
+                }
             }
         }
+
         override fun getItemCount() = items.size
     }
 }
